@@ -10,6 +10,7 @@ import { Xumm } from "xumm";
 function App() {
   const xummApiKey = import.meta.env.VITE_XUMM_API_KEY!;
   const xumm = useMemo(() => new Xumm(xummApiKey), [xummApiKey]);
+  // console.log('✅ XUMM API KEY:', import.meta.env.VITE_XUMM_API_KEY);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [account, setAccount] = useState<string | null>(null);
