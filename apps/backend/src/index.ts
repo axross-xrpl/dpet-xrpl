@@ -19,13 +19,17 @@ app.use(cors());
 app.use(express.json());
 
 // Mount routes
-app.use("/api/account", accountRoute);
-app.use("/api/balance", balanceRoute);
-app.use("/api/nfts", nftsRoute);
-app.use("/api/upload", uploadFileRoute);
-app.use("/api/uploadJson", uploadJsonRoute);
-app.use("/api/getNftTokenId", getNftTokenId);
-app.use("/api/getUrlFromCid", getUrlFromCid);
+
+// XRPL  
+app.use("/api/xrpl/account", accountRoute);
+app.use("/api/xrpl/balance", balanceRoute);
+app.use("/api/xrpl/nfts", nftsRoute);
+app.use("/api/xrpl/getnftokenid", getNftTokenId);
+
+// IPFS
+app.use("/api/ipfs/uploadfile", uploadFileRoute);
+app.use("/api/ipfs/uploadjson", uploadJsonRoute);
+app.use("/api/ipfs/geturlfromcid", getUrlFromCid);
 
 app.listen(port, () => {
   console.log(`Backend listening at http://localhost:${port}`);

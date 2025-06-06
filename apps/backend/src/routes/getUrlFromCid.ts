@@ -12,7 +12,7 @@ router.get("/:cid", async (req, res): Promise<any> => {
 
   try {
     const pinataJwt = process.env.PINATA_JWT as string;
-    const url = getUrl(cid, pinataJwt);
+    const url =await getUrl(cid, pinataJwt);
     res.json({ url });
   } catch (error) {
     console.error("Error getting URL from CID:", error);
