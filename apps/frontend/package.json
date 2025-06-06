@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "types": "./src/index.ts",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -20,6 +21,7 @@
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@repo/ui": "*",
+    "@repo/utils": "*",
     "@tailwindcss/vite": "^4.1.7",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",

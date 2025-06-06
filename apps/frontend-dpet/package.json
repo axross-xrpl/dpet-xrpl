@@ -1,0 +1,18 @@
+{
+  "name": "frontend-dpet",
+  "version": "0.0.0",
+  "private": true,
+  
+  "dependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@repo/ui": "*",
+    "@repo/utils": "*"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@repo/ui": "*",
+    "@repo/utils": "*"
+  }
+}
