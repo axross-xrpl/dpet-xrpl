@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
 import { DpetPage } from "@repo/frontend-dpet";
 import { HomePage } from "./pages/HomePage";
 import { AccountInfo } from "./pages/AccountInfoPage";
+import { NFTokenModifyPage } from "./pages/NFTokenModifyPage";
 import { XummContext } from "./contexts/XummContext";
 import dnftLogo from "./assets/dnft_icon.webp";
 import { Button } from "@repo/ui/button";
@@ -147,6 +148,18 @@ const fetchBalance = async (account: string) => {
                   My Pets
                 </NavLink>
                 <NavLink
+                  to="/nft-modify"
+                  end
+                  className={({ isActive }) =>
+                    `px-4 py-2 rounded transition-colors duration-200 font-semibold ${isActive
+                      ? "bg-yellow-700 text-white"
+                      : "text-yellow-700 hover:bg-yellow-200"
+                    }`
+                  }
+                >
+                  NFT Modify
+                </NavLink>
+                <NavLink
                   to="/info"
                   end
                   className={({ isActive }) =>
@@ -181,6 +194,7 @@ const fetchBalance = async (account: string) => {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/info" element={<AccountInfo />} />
                 <Route path="/dpet" element={<DpetPage />} />
+                <Route path="/nft-modify" element={<NFTokenModifyPage />} />
               </Routes>
             </main>
           </div>
