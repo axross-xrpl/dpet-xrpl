@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useXumm } from "../contexts/XummContext";
 import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
+import { stringToHex } from "@repo/utils/stringToHex"; 
 
 // Example NFT data (replace with real fetch logic)
 const sampleNFT = {
@@ -16,12 +17,6 @@ export function NFTokenModifyPage() {
     const [payload, setPayload] = useState<any>(null);
     const [sending, setSending] = useState(false);
     const [sendResult, setSendResult] = useState<any>(null);
-
-    function stringToHex(str: string) {
-        return Array.from(str)
-            .map(c => c.charCodeAt(0).toString(16).padStart(2, "0"))
-            .join("");
-    }
 
     const handleConfirm = () => {
         const txPayload = createNFTokenModifyPayload({
