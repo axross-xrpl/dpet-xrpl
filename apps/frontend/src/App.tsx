@@ -42,7 +42,7 @@ function App() {
 const fetchBalance = async (account: string) => {
   if (!account) return;
   try {
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/balance/${account}`);
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/xrpl/balance/${account}`);
     if (!response.ok) {
       throw new Error("Failed to fetch balance");
     }

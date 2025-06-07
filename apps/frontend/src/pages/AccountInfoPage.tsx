@@ -10,7 +10,7 @@ export function AccountInfo() {
   const fetchAccountInfo = async () => {
     const address = inputRef.current?.value?.trim();
     if (!address) return;
-    const res = await fetch(`${API_URL}/api/account/${address}`);
+    const res = await fetch(`${API_URL}/api/xrpl/account/${address}`);
     const data = await res.json();
     setAccountInfo(data);
   };
