@@ -8,7 +8,7 @@ import uploadFileRoute from "./routes/uploadFile";
 import uploadJsonRoute from "./routes/uploadJson";
 import getNftTokenId from "./routes/getNftTokenId";
 import getUrlFromCid from "./routes/getUrlFromCid";
-
+import createPet from "./routes/createPet";
 
 dotenv.config();
 
@@ -30,6 +30,9 @@ app.use("/api/xrpl/getnftokenid", getNftTokenId);
 app.use("/api/ipfs/uploadfile", uploadFileRoute);
 app.use("/api/ipfs/uploadjson", uploadJsonRoute);
 app.use("/api/ipfs/geturlfromcid", getUrlFromCid);
+
+// pet
+app.use("/api/pet/create", createPet);
 
 app.listen(port, () => {
   console.log(`Backend listening at http://localhost:${port}`);
