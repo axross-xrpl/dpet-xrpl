@@ -21,7 +21,14 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* Paths */
+    "baseUrl": ".",
+    "paths": {
+      "@repo/frontend-dpet": ["../frontend-dpet/src"],
+      "@repo/frontend-dpet/*": ["../frontend-dpet/src/*"]
+    }
   },
   "include": ["src"]
 }

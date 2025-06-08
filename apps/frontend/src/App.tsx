@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
+import { DpetPage } from "@repo/frontend-dpet";
 import { HomePage } from "./pages/HomePage";
 import { AccountInfo } from "./pages/AccountInfoPage";
 import { XummContext } from "./contexts/XummContext";
@@ -42,7 +43,7 @@ function App() {
 const fetchBalance = async (account: string) => {
   if (!account) return;
   try {
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/balance/${account}`);
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/xrpl/balance/${account}`);
     if (!response.ok) {
       throw new Error("Failed to fetch balance");
     }
@@ -132,7 +133,19 @@ const fetchBalance = async (account: string) => {
                     }`
                   }
                 >
-                  Home
+                  Top
+                </NavLink>
+                <NavLink
+                  to="/dpet"
+                  end
+                  className={({ isActive }) =>
+                    `px-4 py-2 rounded transition-colors duration-200 font-semibold ${isActive
+                      ? "bg-yellow-700 text-white"
+                      : "text-yellow-700 hover:bg-yellow-200"
+                    }`
+                  }
+                >
+                  My Pets
                 </NavLink>
                 <NavLink
                   to="/info"
@@ -168,6 +181,7 @@ const fetchBalance = async (account: string) => {
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/info" element={<AccountInfo />} />
+                <Route path="/dpet" element={<DpetPage />} />
               </Routes>
             </main>
           </div>
