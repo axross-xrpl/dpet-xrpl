@@ -57,3 +57,21 @@ export async function getAccountBalance(address: string) {
     await disconnectClient();
   }
 }
+
+// Retrieves NFTs owned by an account from the XRPL network
+export async function getAccountNFTs(address: string) {
+  await connectClient();
+  try {
+    const response = await client.request({
+      command: "account_nfts",
+      account: address,
+      ledger_index: "validated",
+    });
+    return response;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to get account NFTs: ${errorMessage}`);
+  } finally {
+    await disconnectClient();
+  }
+}

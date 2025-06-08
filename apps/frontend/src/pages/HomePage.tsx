@@ -52,10 +52,13 @@ export function HomePage() {
         const status = await xumm.payload.get(response.uuid);
         const nftokenId = null;
         if (status && status.meta.signed) {
-          setUserInfo({ name: userName, avatar, tokenId: nftokenId || "UNKNOWN" });
           setMintStatus("NFT Minted! 🎉");
           setShowQr(false);
           clearInterval(poll);
+
+          await fetchNftsList();
+
+          setUserInfo({ name: userName, avatar, tokenId: nftokenId || "UNKNOWN" });
 
           // Hide status after a 3 seconds
           setTimeout(() => {
@@ -72,6 +75,20 @@ export function HomePage() {
       setMintStatus("Error minting NFT.");
       setShowQr(false);
       console.error("Error minting NFT:", error);
+    }
+  };
+
+  const fetchNftsList = async () => {
+    try {
+      if (!account) throw new Error("Account is not available.");
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/nfts/${account}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch NFT list.");
+      }
+      const data = await response.json();
+      console.log("NFT List:", data);
+    } catch (error) {
+      console.error("Error fetching NFT list:", error);
     }
   };
 
