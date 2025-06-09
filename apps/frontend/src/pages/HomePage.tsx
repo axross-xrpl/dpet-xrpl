@@ -12,6 +12,11 @@ export function HomePage() {
   const [userInfo, setUserInfo] = useState<{ name: string; avatar: 'A' | 'B'; tokenId: string; } | null >(null);
   const [name, setName] = useState('');
   const [avatarType, setAvatarType] = useState<'A' | 'B'>('A');
+  const avatarImageMap = { 
+    A: "/src/assets/avatars/avatar-a001.jpg", 
+    B: "/src/assets/avatars/avatar-b001.jpg", 
+  };
+  const API_URL = import.meta.env.VITE_BACKEND_URL!;
 
   const handleMintNft = async (userName: string, avatar: 'A' | 'B') => {
     try {
@@ -24,13 +29,21 @@ export function HomePage() {
       setShowQr(true);
       setShowPopup(true);
 
-      const response = await xumm.payload.create({
-        txjson: {
-          TransactionType: "NFTokenMint",
-          Account: account,
-          NFTokenTaxon: 0,
-          Flags: 16,
-        },
+      console.log("Uploading Avatar image to IPFS...");
+
+      const avatarImageUrl = avatarImageMap[avatar];
+      const imageResponse = await fetch(avatarImageUrl);
+      const imageBlob = await imageResponse.blob();
+
+      const formData = new FormData();
+      formData.append("avatarImage", imageBlob, `${avatar}.jpg`);
+      formData.append("userName", userName);
+      formData.append("account", account);
+      formData.append("avatarType", avatar);
+
+      const response = await fetch(`${API_URL}/api/avatar/createavatar`, {
+        method: "POST",
+        body: formData,
       });
 
       if (!response) {
@@ -38,8 +51,18 @@ export function HomePage() {
         setShowQr(false);
         return;
       }
+      const data = await response.json();
+      const payloadUuid = data.payloadUuid;
+      const qrPng = data.qrPng;
+      const metadataIpfsUrl = data.metadataIpfsUrl;
 
-      setQrUrl(response.refs?.qr_png || null);
+      console.log("NFT Mint Payload created. Waiting for signature...");
+
+      setQrUrl(qrPng || null);
+
+      let retryCount = 0;
+      const maxRetries = 15;
+      let isSigned = false;
 
       // Poll for status
       const poll = setInterval(async () => {
@@ -49,16 +72,39 @@ export function HomePage() {
           clearInterval(poll);
           return;
         }
-        const status = await xumm.payload.get(response.uuid);
-        const nftokenId = null;
+
+        retryCount++;
+
+        const response = await fetch(`${API_URL}/api/avatar/getpayloadstatus/${payloadUuid}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch payload status.");
+        }
+
+        const status = await response.json();
+
         if (status && status.meta.signed) {
-          setMintStatus("NFT Minted! 🎉");
-          setShowQr(false);
-          clearInterval(poll);
+          if (!isSigned) {
+            console.log("Payload signed! Starting NFT URI polling...");
+            isSigned = true;
+          }
+          console.log("Payload signed! Checking account_nfts...", status);
 
-          await fetchNftsList();
+          const mintedNft = await fetchNftsList(metadataIpfsUrl);
+          if (mintedNft) {
+            const tokenId = mintedNft.NFTokenID;
+            console.log("Minted NFT TokenID:", tokenId);
 
-          setUserInfo({ name: userName, avatar, tokenId: nftokenId || "UNKNOWN" });
+            setUserInfo({ name: userName, avatar, tokenId });
+            setMintStatus("NFT Minted! 🎉");
+            setShowQr(false);
+            clearInterval(poll);
+          }else {
+            console.log(`NFT with matching URI not found yet. Retry ${retryCount}/${maxRetries}...`);
+            if (retryCount >= maxRetries) {
+              setMintStatus("NFT Minting in progress. NFT may take some time to appear.");
+              clearInterval(poll);
+            }
+          }
 
           // Hide status after a 3 seconds
           setTimeout(() => {
@@ -68,6 +114,14 @@ export function HomePage() {
           setMintStatus("Mint request expired.");
           setShowQr(false);
           clearInterval(poll);
+        }else {
+          console.log(`Waiting for payload signature... Retry ${retryCount}/${maxRetries}`);
+          
+          if (retryCount >= maxRetries && !isSigned) {
+            setMintStatus("Mint request is taking too long or failed.");
+            setShowQr(false);
+            clearInterval(poll);
+          }
         }
       }, 2000); // Poll every 2 seconds
 
@@ -78,15 +132,44 @@ export function HomePage() {
     }
   };
 
-  const fetchNftsList = async () => {
+  const fetchNftsList = async (metadataIpfsUrl: string) => {
     try {
       if (!account) throw new Error("Account is not available.");
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/nfts/${account}`);
+
+      const response = await fetch(`${API_URL}/api/xrpl/nfts/${account}`);
       if (!response.ok) {
         throw new Error("Failed to fetch NFT list.");
       }
+
       const data = await response.json();
       console.log("NFT List:", data);
+
+      const accountNfts = data.result.account_nfts || [];
+
+      // Decode hex-format URIs for match comparison
+      const convertHexToString = (hex: string) => {
+        if (!hex) return "";
+
+        return decodeURIComponent(
+          hex
+            .replace(/^0+/, '')
+            .match(/.{1,2}/g)!
+            .map(byte => String.fromCharCode(parseInt(byte, 16)))
+            .join('')
+        );
+      };
+
+      const mintedNft = accountNfts.find((nft: any) => {
+        if (!nft.URI) return false;
+
+        const nftUriStr = convertHexToString(nft.URI);
+        console.log("Comparing NFT URI:", nftUriStr, "vs", metadataIpfsUrl);
+
+        return nftUriStr === metadataIpfsUrl;
+      });
+
+      console.log("minted NFT finded:", mintedNft);
+      return mintedNft;
     } catch (error) {
       console.error("Error fetching NFT list:", error);
     }
@@ -140,7 +223,7 @@ export function HomePage() {
                       checked={avatarType === 'A'}
                       onChange={() => setAvatarType('A')}
                     />
-                    <img src="/public/assets/avatars/avatar-a001.jpg" alt="Type A" className="w-24 h-24" />
+                    <img src="/src/assets/avatars/avatar-a001.jpg" alt="Type A" className="w-24 h-24" />
                     <span>Type A</span>
                   </label>
 
@@ -152,7 +235,7 @@ export function HomePage() {
                       checked={avatarType === 'B'}
                       onChange={() => setAvatarType('B')}
                     />
-                    <img src="/public/assets/avatars/avatar-b001.jpg" alt="Type B" className="w-24 h-24" />
+                    <img src="/src/assets/avatars/avatar-b001.jpg" alt="Type B" className="w-24 h-24" />
                     <span>Type B</span>
                   </label>
                 </div>
@@ -207,7 +290,7 @@ export function HomePage() {
           <div className="p-6 rounded-xl flex gap-8 items-center justify-center mt-6">
             {/* アバター画像 */}
             <img
-              src={`/assets/avatars/avatar-${userInfo.avatar === 'A' ? 'a001' : 'b001'}.jpg`}
+              src={`/src/assets/avatars/avatar-${userInfo.avatar === 'A' ? 'a001' : 'b001'}.jpg`}
               alt="User Avatar"
               className="w-48 h-48 object-contain"
             />
@@ -223,7 +306,7 @@ export function HomePage() {
               >
                 NFT details
                 <img
-                  src="/public/assets/icons/125_arr_hoso.svg"
+                  src="/src/assets/icons/125_arr_hoso.svg"
                   alt="open in new tab"
                   className="w-4 h-4"
                 />

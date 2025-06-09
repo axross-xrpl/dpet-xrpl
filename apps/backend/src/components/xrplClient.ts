@@ -1,6 +1,7 @@
 import * as xrpl from "xrpl";
 import dotenv from "dotenv";
 dotenv.config();
+import { XummSdk } from "xumm-sdk";
 
 const XRPL_ENDPOINT = process.env.XRPL_ENDPOINT!;
 if (!XRPL_ENDPOINT) {
@@ -8,6 +9,12 @@ if (!XRPL_ENDPOINT) {
 }
 
 const client = new xrpl.Client(XRPL_ENDPOINT);
+
+// Xumm SDK Initialization
+const xummSdk = new XummSdk(
+  process.env.XUMM_API_KEY!,
+  process.env.XUMM_API_SECRET!
+);
 
 // Connects to the XRPL client if it is not already connected
 async function connectClient() {
@@ -111,3 +118,5 @@ export async function getNFTTokenIdFromTx(txid: string): Promise<string | null> 
     await disconnectClient();
   }
 }
+
+export { xummSdk };
