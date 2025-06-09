@@ -41,6 +41,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       date: new Date(),
       type: "pet",
       pet_type: petType,
+      generations: "gen1",
     };
     const jsonCid = await uploadJsonToIpfs(jsonData, pinataJwt);
     console.log("jsonCid:", jsonCid);
