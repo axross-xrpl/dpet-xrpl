@@ -119,4 +119,95 @@ export async function getNFTTokenIdFromTx(txid: string): Promise<string | null> 
   }
 }
 
+// create Pet NFT
+export async function createPetNft(jsonCid: string): Promise<any> {
+  await connectClient();
+  try {
+    // system account
+    const wallet = xrpl.Wallet.fromSecret(process.env.SYSTEM_SECRET as string);
+    // user account
+    const destAddress = process.env.USER_ADDRESS as string;
+
+    const response = await client.submitAndWait(
+      {
+        TransactionType: "NFTokenMint",
+        Account: wallet.address,
+        NFTokenTaxon: 0,
+        URI: xrpl.convertStringToHex(`ipfs://${jsonCid}`),
+        // TODO 販売金額を設定
+        Amount: xrpl.xrpToDrops("10"),
+        Destination: destAddress,
+      },
+      {
+        wallet,
+      }
+    );
+    console.log("NFTokenMint:", response);
+    return response;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to create Pet NFT: ${errorMessage}`);
+  } finally {
+    await disconnectClient();
+  }
+}
+
+// create sell offer
+export async function createSellOffer(nftokenId: string): Promise<any> {
+  await connectClient();
+  try {
+    // system account
+    const wallet = xrpl.Wallet.fromSecret(process.env.SYSTEM_SECRET as string);
+
+    const response = await client.submitAndWait(
+      {
+        TransactionType: "NFTokenCreateOffer",
+        Account: wallet.address,
+        NFTokenID: nftokenId,
+        Flags: 1, // 売却オファーを作成
+        // TODO 販売金額を設定
+        Amount: xrpl.xrpToDrops("10"),
+      },
+      {
+        wallet,
+      }
+    );
+    console.log("NFTokenCreateOffer:", response);
+    return response;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to create sell offer: ${errorMessage}`);
+  } finally {
+    await disconnectClient();
+  }
+}
+
+// accept sell offer
+export async function acceptSellOffer(offerId: string): Promise<any> {
+  await connectClient();
+  try {
+    // user account
+    const wallet = xrpl.Wallet.fromSecret(process.env.USER_SECRET as string);
+
+    // 売却オファーの承認
+    const responseAcceptOffer = await client.submitAndWait(
+      {
+        TransactionType: "NFTokenAcceptOffer",
+        Account: wallet.address,
+        NFTokenSellOffer: offerId,
+      },
+      {
+        wallet,
+      }
+    );
+    console.log("NFTokenAcceptOffer:", responseAcceptOffer);
+    return responseAcceptOffer;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to accept sell offer: ${errorMessage}`);
+  } finally {
+    await disconnectClient();
+  }
+}
+
 export { xummSdk };

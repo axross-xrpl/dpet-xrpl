@@ -8,9 +8,11 @@ import uploadFileRoute from "./routes/uploadFile";
 import uploadJsonRoute from "./routes/uploadJson";
 import getNftTokenId from "./routes/getNftTokenId";
 import getUrlFromCid from "./routes/getUrlFromCid";
+
 import createAvatarRoute from "./routes/createAvatar";
 import getPayloadStatusRoute from "./routes/createAvatar";
 
+import createPet from "./routes/createPet";
 
 dotenv.config();
 
@@ -36,6 +38,9 @@ app.use("/api/ipfs/geturlfromcid", getUrlFromCid);
 // AVATAR
 app.use("/api/avatar/createavatar", createAvatarRoute);
 app.use("/api/avatar/getpayloadstatus", getPayloadStatusRoute);
+
+// pet
+app.use("/api/pet/create", createPet);
 
 app.listen(port, () => {
   console.log(`Backend listening at http://localhost:${port}`);
