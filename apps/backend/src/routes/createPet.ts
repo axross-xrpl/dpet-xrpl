@@ -2,17 +2,16 @@ import { Router } from "express";
 import multer from "multer";
 import { uploadToIpfs, uploadJsonToIpfs } from "@repo/utils/ipfs";
 
-import {
-  createPetNft,
-  createSellOffer,
-  acceptSellOffer,
-} from "../components/xrplClient";
+import { createPetNft, acceptSellOffer } from "../components/xrplClient";
 
 const router = Router();
 const upload = multer();
 
 router.post("/", upload.single("file"), async (req, res) => {
   try {
+    const address = req.body.address;
+    // ユーザアカウントのsecretを渡す良い方法があれば修正
+    const secret = req.body.secret;
     const petName = req.body.petName;
     const petType = req.body.petType;
     const file = req.file;
@@ -47,17 +46,12 @@ router.post("/", upload.single("file"), async (req, res) => {
     console.log("jsonCid:", jsonCid);
 
     // JSONのCIDを埋め込んだペイロードを作成し、NFTミントを実行
-    const responsePetNft = await createPetNft(jsonCid);
-    // トークンIDを取得
-    const nftokenId = getNFTokenId(responsePetNft);
-
-    // システムアカウントで売却オファーを作成
-    const responseSellOffer = await createSellOffer(nftokenId);
+    const responsePetNft = await createPetNft(address, jsonCid);
     // オファーIDを取得
-    const offerId = getOfferId(responseSellOffer);
+    const offerId = getOfferId(responsePetNft);
 
     // ユーザーアカウントで売却オファーを受領
-    const responseAcceptOffer = await acceptSellOffer(offerId);
+    const responseAcceptOffer = await acceptSellOffer(secret, offerId);
 
     // TODO レスポンス整理
     // res.json({ NFTokenID: nftokenId! });
@@ -80,17 +74,7 @@ async function uploadImage(file: any, pinataJwt: string): Promise<string> {
   return ipfsUrl;
 }
 
-// get NFTokenId from NFTokenMint response
-function getNFTokenId(response: any): string {
-  const meta = response.result.meta;
-  if (meta.TransactionResult !== "tesSUCCESS") {
-    throw new Error("Failed to get NFTokenId");
-  }
-
-  return meta.nftoken_id;
-}
-
-// get offerId from NFTokenCreateOffer response
+// get offerId from meta
 function getOfferId(response: any): string {
   const meta = response.result.meta;
   if (meta.TransactionResult !== "tesSUCCESS") {

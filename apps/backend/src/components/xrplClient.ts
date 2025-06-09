@@ -12,7 +12,6 @@ function createClient() {
   return new xrpl.Client(XRPL_ENDPOINT);
 }
 
-
 // Retrieves account information from the XRPL network
 export async function getAccountInfo(address: string) {
   const client = createClient();
@@ -70,7 +69,9 @@ export async function getAccountNFTs(address: string) {
 }
 
 // Retrieves the token ID of NFT from a transaction on the XRPL network
-export async function getNFTTokenIdFromTx(txid: string): Promise<string | null> {
+export async function getNFTTokenIdFromTx(
+  txid: string
+): Promise<string | null> {
   const client = createClient();
   await client.connect();
   try {
@@ -78,7 +79,7 @@ export async function getNFTTokenIdFromTx(txid: string): Promise<string | null> 
       command: "tx",
       transaction: txid,
       binary: false,
-      api_version: 2
+      api_version: 2,
     });
     if (!response.result || !response.result.meta) {
       throw new Error(`Transaction ${txid} not found or has no metadata.`);
@@ -88,9 +89,10 @@ export async function getNFTTokenIdFromTx(txid: string): Promise<string | null> 
     if (txType === "NFTokenMint") {
       const meta = response.result.meta;
       // Check if meta is an object and has nftoken_id property
-      const nftTokenId = typeof meta === "object" && meta !== null && "nftoken_id" in meta
-        ? meta.nftoken_id
-        : undefined;
+      const nftTokenId =
+        typeof meta === "object" && meta !== null && "nftoken_id" in meta
+          ? meta.nftoken_id
+          : undefined;
       if (!nftTokenId) {
         throw new Error(`No NFT token ID found in minted transaction ${txid}.`);
       }
@@ -106,15 +108,16 @@ export async function getNFTTokenIdFromTx(txid: string): Promise<string | null> 
   }
 }
 
-// create Pet NFT
-export async function createPetNft(jsonCid: string): Promise<any> {
+// ペットNFTをミント
+export async function createPetNft(
+  address: string,
+  jsonCid: string
+): Promise<any> {
   const client = createClient();
   await client.connect();
   try {
     // system account
     const wallet = xrpl.Wallet.fromSecret(process.env.SYSTEM_SECRET as string);
-    // user account
-    const destAddress = process.env.USER_ADDRESS as string;
 
     const response = await client.submitAndWait(
       {
@@ -124,7 +127,7 @@ export async function createPetNft(jsonCid: string): Promise<any> {
         URI: xrpl.convertStringToHex(`ipfs://${jsonCid}`),
         // TODO 販売金額を設定
         Amount: xrpl.xrpToDrops("10"),
-        Destination: destAddress,
+        Destination: address,
       },
       {
         wallet,
@@ -140,44 +143,16 @@ export async function createPetNft(jsonCid: string): Promise<any> {
   }
 }
 
-// create sell offer
-export async function createSellOffer(nftokenId: string): Promise<any> {
+// 売却オファーを承認
+export async function acceptSellOffer(
+  secret: string,
+  offerId: string
+): Promise<any> {
   const client = createClient();
   await client.connect();
-  try {
-    // system account
-    const wallet = xrpl.Wallet.fromSecret(process.env.SYSTEM_SECRET as string);
 
-    const response = await client.submitAndWait(
-      {
-        TransactionType: "NFTokenCreateOffer",
-        Account: wallet.address,
-        NFTokenID: nftokenId,
-        Flags: 1, // 売却オファーを作成
-        // TODO 販売金額を設定
-        Amount: xrpl.xrpToDrops("10"),
-      },
-      {
-        wallet,
-      }
-    );
-    console.log("NFTokenCreateOffer:", response);
-    return response;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to create sell offer: ${errorMessage}`);
-  } finally {
-    await client.disconnect();
-  }
-}
-
-// accept sell offer
-export async function acceptSellOffer(offerId: string): Promise<any> {
-  const client = createClient();
-  await client.connect();
   try {
-    // user account
-    const wallet = xrpl.Wallet.fromSecret(process.env.USER_SECRET as string);
+    const wallet = xrpl.Wallet.fromSecret(secret);
 
     // 売却オファーの承認
     const responseAcceptOffer = await client.submitAndWait(
