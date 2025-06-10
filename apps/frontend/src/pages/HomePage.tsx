@@ -1,6 +1,7 @@
 import { useXumm } from "../contexts/XummContext";
 import { Button } from "@repo/ui/button";
 import { useState } from "react";
+import { convertStringToHex } from "xrpl";
 
 export function HomePage() {
   const { xumm } = useXumm();
@@ -16,56 +17,137 @@ export function HomePage() {
     A: "/src/assets/avatars/avatar-a001.jpg", 
     B: "/src/assets/avatars/avatar-b001.jpg", 
   };
+  const eatTime = {
+    name: 'ramen', 
+    date: '2025-05-31:19:31:31', 
+    calories: 450,
+  }
   const API_URL = import.meta.env.VITE_BACKEND_URL!;
 
+  /**
+   * [owner] NFTミント処理
+   * @param userName ユーザーが入力した名前
+   * @param avatar 選択したアバタータイプ（'A' または 'B'）
+   */
   const handleMintNft = async (userName: string, avatar: 'A' | 'B') => {
     try {
-      if (!xumm.payload) throw new Error("Xumm payload is not available.");
+      //  Xummペイロードとアカウント情報が利用可能かを確認
       if (!account) throw new Error("Account is not available.");
+      if (!xumm.payload) throw new Error("Xumm payload is not available.");
 
       console.log("Minting for:", userName, avatar);
     
+      // NFTミント処理の現在のステータス表示をリセット
       setMintStatus(null);
-      setShowQr(true);
+
+      // 名前とアバターを選択するポップアップを表示
       setShowPopup(true);
 
+      // ---------------------------------------
+      // 1.アバター画像をIPFSにアップロード
+      // ---------------------------------------
       console.log("Uploading Avatar image to IPFS...");
 
+      // 選択されたアバタータイプ（'A'or'B'）に対応する画像URLをavatarImageMapから取得
       const avatarImageUrl = avatarImageMap[avatar];
+
+      // アバター画像をfetchしてBlob化
       const imageResponse = await fetch(avatarImageUrl);
       const imageBlob = await imageResponse.blob();
 
+      // FormDataオブジェクトを作成し、画像を添付
       const formData = new FormData();
       formData.append("avatarImage", imageBlob, `${avatar}.jpg`);
-      formData.append("userName", userName);
-      formData.append("account", account);
-      formData.append("avatarType", avatar);
 
-      const response = await fetch(`${API_URL}/api/avatar/createavatar`, {
+      // アバター画像をIPFSへアップロード
+      const uploadFileResponse = await fetch(`${API_URL}/api/avatar/create/upload-file`, {
         method: "POST",
         body: formData,
       });
 
-      if (!response) {
+      // エラーハンドリング
+      if (!uploadFileResponse.ok) {
+        throw new Error("Failed to uploading avatar image file to IPFS.");
+      }
+
+      // IPFS上のURLを取得
+      const uploadFileData = await uploadFileResponse.json();
+      const ipfsUrl = uploadFileData.ipfsUrl;
+      console.log("Avatar Image uploaded to IPFS:", ipfsUrl);
+
+      // ---------------------------------------
+      // 2.メタデータJSONをIPFSにアップロード
+      // ---------------------------------------
+      console.log("Uploading NFT metadata to IPFS...");
+
+      // NFTのメタデータを作成
+      const metadata = {
+        user_name: userName,
+        image:ipfsUrl,
+        avatarType: avatar,
+        date: '2025/06/10',
+        type: 'avatar',
+        body_type: 'average',
+        eat_time: eatTime
+      };
+
+      // メタデータJSONをIPFSへアップロード
+      const uploadJsonResponse = await fetch(`${API_URL}/api/avatar/create/upload-json`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(metadata),
+      });
+
+      // エラーハンドリング
+      if (!uploadJsonResponse.ok) {
+        throw new Error("Failed to uploading JSON to IPFS.");
+      }
+
+      // IPFS上のメタデータCIDからNFT用URIを生成
+      const uploadJsonData = await uploadJsonResponse.json();
+      const cid = uploadJsonData.cid;
+      const metadataIpfsUrl = `ipfs://${cid}`;
+      console.log("NFT metadata uploaded to IPFS:", metadataIpfsUrl);
+
+      // ---------------------------------------
+      // 3.NFTミント
+      // ---------------------------------------
+      console.log("Creating Xumm payload for NFT mint...");
+
+      // QRコードをポップアップ表示開始
+      setShowQr(true);
+
+      // Xumm経由でNFTokenMintのペイロードを作成
+      const payloadResponse = await xumm.payload?.create({
+        TransactionType: "NFTokenMint",
+        Account: account,
+        URI: convertStringToHex(metadataIpfsUrl), // URIはHexエンコードで送信
+        Flags: 8,
+        NFTokenTaxon: 0,
+      });
+
+      // エラーハンドリング
+      if (!payloadResponse) {
         setMintStatus("Failed to create payload.");
         setShowQr(false);
         return;
       }
-      const data = await response.json();
-      const payloadUuid = data.payloadUuid;
-      const qrPng = data.qrPng;
-      const metadataIpfsUrl = data.metadataIpfsUrl;
 
+      const payloadUuid = payloadResponse.uuid;    // ペイロードUUID（署名状態取得時に使用）
+      const qrPng = payloadResponse.refs.qr_png;   // QRコードPNG（画面表示用）
+
+      // QRコードを画面にセット
+      setQrUrl(qrPng || null);
       console.log("NFT Mint Payload created. Waiting for signature...");
 
-      setQrUrl(qrPng || null);
-
-      let retryCount = 0;
-      const maxRetries = 15;
+      // ---------------------------------------
+      // 4.署名済みペイロードとtxidをポーリング、トークンIDを取得
+      // ---------------------------------------
       let isSigned = false;
 
-      // Poll for status
+      // 2秒ごとにXummペイロードの署名状態を確認するポーリング
       const poll = setInterval(async () => {
+        // 署名確認用APIが利用可能か確認
         if (!xumm.payload) {
           setMintStatus("Xumm payload is not available.");
           setShowQr(false);
@@ -73,51 +155,86 @@ export function HomePage() {
           return;
         }
 
-        retryCount++;
+        // 初期化
+        let tokenId = null;
+        let retryCount = 0;
+        const maxRetries = 15;
 
-        const response = await fetch(`${API_URL}/api/avatar/getpayloadstatus/${payloadUuid}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch payload status.");
-        }
+        // ペイロードの署名状態を取得
+        const status = await xumm.payload?.get(payloadUuid);
 
-        const status = await response.json();
-
+        // ペイロードが署名済みかどうか確認
         if (status && status.meta.signed) {
+          // まだTokenID取得を開始していない場合のみ処理実行
           if (!isSigned) {
-            console.log("Payload signed! Starting NFT URI polling...");
+            console.log("Payload signed! Starting NFT TokenID polling...");
             isSigned = true;
-          }
-          console.log("Payload signed! Checking account_nfts...", status);
 
-          const mintedNft = await fetchNftsList(metadataIpfsUrl);
-          if (mintedNft) {
-            const tokenId = mintedNft.NFTokenID;
-            console.log("Minted NFT TokenID:", tokenId);
+            // 署名済ペイロードのトランザクションID（txid）を取得
+            const txid = status.response.txid;
+            console.log("txid:", txid);
 
-            setUserInfo({ name: userName, avatar, tokenId });
-            setMintStatus("NFT Minted! 🎉");
-            setShowQr(false);
-            clearInterval(poll);
-          }else {
-            console.log(`NFT with matching URI not found yet. Retry ${retryCount}/${maxRetries}...`);
-            if (retryCount >= maxRetries) {
-              setMintStatus("NFT Minting in progress. NFT may take some time to appear.");
+            // 署名後2秒待ってから最初のTokenID取得開始
+            console.log("Payload signed! Waiting 2 seconds before starting NFT TokenID polling...");
+            await new Promise(resolve => setTimeout(resolve, 2000)); // 2秒待つ
+
+            // TokenID retry loop
+            // txidからNFT TokenIDを取得するまでリトライする
+            while(retryCount < maxRetries) {
+              try {
+                console.log(`Fetching Token ID... attempt ${retryCount + 1}`);
+
+                // NFT TokenIDを取得する
+                const tokenIdResponse = await fetch(`${API_URL}/api/avatar/create/${txid}`);
+                if (tokenIdResponse.ok) {
+                  const tokenIdData = await tokenIdResponse.json();
+                  tokenId = tokenIdData.tokenId;
+                  console.log("NFT TokenID:", tokenId);
+
+                  // UIを更新 & ポーリング停止
+                  setUserInfo({ name: userName, avatar, tokenId });
+                  setMintStatus("NFT Minted! 🎉");
+                  setShowQr(false);
+                  clearInterval(poll);
+
+                  // 状態メッセージを3秒後に非表示にする
+                  setTimeout(() => {
+                    setMintStatus(null);
+                  }, 3000);
+
+                  
+                  break; // retry loop終了
+                } else {
+                  // APIがエラーを返した場合、エラーをthrow
+                  throw new Error("Failed to fetch NFT token ID.");
+                }
+              } catch (error) {
+                // エラー内容をログ出力
+                console.error("Error fetching NFT token ID:", error);
+
+                // 次のリトライまで2秒待つ
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              }
+              retryCount++;
+            }
+            // retry loop終了後、tokenIdが未取得状態の場合、失敗メッセージを表示
+            if (!tokenId) {
+              setMintStatus("Failed to fetch NFT token ID after multiple attempts.");
+              setShowQr(false);
               clearInterval(poll);
             }
-          }
-
-          // Hide status after a 3 seconds
-          setTimeout(() => {
-            setMintStatus(null);
-          }, 3000);
+          }          
         } else if (status && status.meta.expired) {
+          // ペイロードが期限切れの場合、エラーメッセージを表示してポーリング停止
           setMintStatus("Mint request expired.");
           setShowQr(false);
           clearInterval(poll);
         }else {
           console.log(`Waiting for payload signature... Retry ${retryCount}/${maxRetries}`);
           
-          if (retryCount >= maxRetries && !isSigned) {
+          retryCount++;
+          // 最大リトライ数に達した場合、タイムアウトとみなして処理終了
+          if (retryCount >= maxRetries) {
             setMintStatus("Mint request is taking too long or failed.");
             setShowQr(false);
             clearInterval(poll);
@@ -129,49 +246,6 @@ export function HomePage() {
       setMintStatus("Error minting NFT.");
       setShowQr(false);
       console.error("Error minting NFT:", error);
-    }
-  };
-
-  const fetchNftsList = async (metadataIpfsUrl: string) => {
-    try {
-      if (!account) throw new Error("Account is not available.");
-
-      const response = await fetch(`${API_URL}/api/xrpl/nfts/${account}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch NFT list.");
-      }
-
-      const data = await response.json();
-      console.log("NFT List:", data);
-
-      const accountNfts = data.result.account_nfts || [];
-
-      // Decode hex-format URIs for match comparison
-      const convertHexToString = (hex: string) => {
-        if (!hex) return "";
-
-        return decodeURIComponent(
-          hex
-            .replace(/^0+/, '')
-            .match(/.{1,2}/g)!
-            .map(byte => String.fromCharCode(parseInt(byte, 16)))
-            .join('')
-        );
-      };
-
-      const mintedNft = accountNfts.find((nft: any) => {
-        if (!nft.URI) return false;
-
-        const nftUriStr = convertHexToString(nft.URI);
-        console.log("Comparing NFT URI:", nftUriStr, "vs", metadataIpfsUrl);
-
-        return nftUriStr === metadataIpfsUrl;
-      });
-
-      console.log("minted NFT finded:", mintedNft);
-      return mintedNft;
-    } catch (error) {
-      console.error("Error fetching NFT list:", error);
     }
   };
 
