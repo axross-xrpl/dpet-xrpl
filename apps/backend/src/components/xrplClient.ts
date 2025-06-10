@@ -12,24 +12,6 @@ function createClient() {
   return new xrpl.Client(XRPL_ENDPOINT);
 }
 
-// Connects to the XRPL client if it is not already connected
-async function connectClient() {
-  if (!client.isConnected()) {
-    await client.connect();
-  }
-}
-
-// Disconnects the XRPL client if it is connected
-async function disconnectClient() {
-  if (client.isConnected()) {
-    await client.disconnect();
-  }
-}
-// Xumm SDK Initialization
-const xummSdk = new XummSdk(
-  process.env.XUMM_API_KEY!,
-  process.env.XUMM_API_SECRET!
-);
 
 // Retrieves account information from the XRPL network
 export async function getAccountInfo(address: string) {
