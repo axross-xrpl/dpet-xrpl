@@ -1,7 +1,7 @@
 /**
  * 画像ファイルのFormDataを受け取り、指定URLへPOSTリクエストするユーティリティ
  */
-export async function postImageForm(file: Express.Multer.File | File): Promise<any> {
+export async function analyzeImageWithAI (file: Express.Multer.File | File): Promise<any> {
   const formData = new FormData();
 
   if ((file as File).name !== undefined && (file as File).type !== undefined) {
