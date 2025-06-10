@@ -7,7 +7,10 @@ if (!XRPL_ENDPOINT) {
   throw new Error("XRPL_ENDPOINT is not defined in the environment variables.");
 }
 
-const client = new xrpl.Client(XRPL_ENDPOINT);
+// Helper to create a new client per request
+function createClient() {
+  return new xrpl.Client(XRPL_ENDPOINT);
+}
 
 // Connects to the XRPL client if it is not already connected
 async function connectClient() {
@@ -22,10 +25,16 @@ async function disconnectClient() {
     await client.disconnect();
   }
 }
+// Xumm SDK Initialization
+const xummSdk = new XummSdk(
+  process.env.XUMM_API_KEY!,
+  process.env.XUMM_API_SECRET!
+);
 
 // Retrieves account information from the XRPL network
 export async function getAccountInfo(address: string) {
-  await connectClient();
+  const client = createClient();
+  await client.connect();
   try {
     const response = await client.request({
       command: "account_info",
@@ -37,13 +46,14 @@ export async function getAccountInfo(address: string) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to get account info: ${errorMessage}`);
   } finally {
-    await disconnectClient();
+    await client.disconnect();
   }
 }
 
 // Retrieves the balance of an account from the XRPL network
 export async function getAccountBalance(address: string) {
-  await connectClient();
+  const client = createClient();
+  await client.connect();
   try {
     const response = await client.getBalances(address);
     if (response.length === 0) {
@@ -54,13 +64,14 @@ export async function getAccountBalance(address: string) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to get account balance: ${errorMessage}`);
   } finally {
-    await disconnectClient();
+    await client.disconnect();
   }
 }
 
 // Retrieves NFTs owned by an account from the XRPL network
 export async function getAccountNFTs(address: string) {
-  await connectClient();
+  const client = createClient();
+  await client.connect();
   try {
     const response = await client.request({
       command: "account_nfts",
@@ -72,13 +83,14 @@ export async function getAccountNFTs(address: string) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to get account NFTs: ${errorMessage}`);
   } finally {
-    await disconnectClient();
+    await client.disconnect();
   }
 }
 
 // Retrieves the token ID of NFT from a transaction on the XRPL network
 export async function getNFTTokenIdFromTx(txid: string): Promise<string | null> {
-  await connectClient();
+  const client = createClient();
+  await client.connect();
   try {
     const response = await client.request({
       command: "tx",
@@ -108,13 +120,14 @@ export async function getNFTTokenIdFromTx(txid: string): Promise<string | null> 
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to get NFT token IDs: ${errorMessage}`);
   } finally {
-    await disconnectClient();
+    await client.disconnect();
   }
 }
 
 // create Pet NFT
 export async function createPetNft(jsonCid: string): Promise<any> {
-  await connectClient();
+  const client = createClient();
+  await client.connect();
   try {
     // system account
     const wallet = xrpl.Wallet.fromSecret(process.env.SYSTEM_SECRET as string);
@@ -141,13 +154,14 @@ export async function createPetNft(jsonCid: string): Promise<any> {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to create Pet NFT: ${errorMessage}`);
   } finally {
-    await disconnectClient();
+    await client.disconnect();
   }
 }
 
 // create sell offer
 export async function createSellOffer(nftokenId: string): Promise<any> {
-  await connectClient();
+  const client = createClient();
+  await client.connect();
   try {
     // system account
     const wallet = xrpl.Wallet.fromSecret(process.env.SYSTEM_SECRET as string);
@@ -171,13 +185,14 @@ export async function createSellOffer(nftokenId: string): Promise<any> {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to create sell offer: ${errorMessage}`);
   } finally {
-    await disconnectClient();
+    await client.disconnect();
   }
 }
 
 // accept sell offer
 export async function acceptSellOffer(offerId: string): Promise<any> {
-  await connectClient();
+  const client = createClient();
+  await client.connect();
   try {
     // user account
     const wallet = xrpl.Wallet.fromSecret(process.env.USER_SECRET as string);
@@ -199,6 +214,6 @@ export async function acceptSellOffer(offerId: string): Promise<any> {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to accept sell offer: ${errorMessage}`);
   } finally {
-    await disconnectClient();
+    await client.disconnect();
   }
 }
