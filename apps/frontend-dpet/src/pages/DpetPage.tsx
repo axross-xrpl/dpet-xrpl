@@ -1,3 +1,4 @@
+import * as xrpl from "xrpl";
 import { useState } from "react";
 import { Input } from "@repo/ui/input";
 import { Button } from "@repo/ui/button";
@@ -8,6 +9,7 @@ export function DpetPage() {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [offerId, setOfferId] = useState<string | null>(null);
+  const [nftListText, setNftListText] = useState<string | null>(null);
 
   const API_URL = import.meta.env.VITE_BACKEND_URL!;
   // .envで定義したかったが読み込めず、暫定で直接保存
@@ -154,6 +156,80 @@ export function DpetPage() {
     }
   };
 
+  // NFTリストを取得
+  const getNftList = async () => {
+    // TODO ログインユーザーのアドレスを指定する
+    const userAddress: string = TEST_USER_ADDRESS;
+
+    const response = await fetch(`${API_URL}/api/xrpl/nfts/${userAddress}`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to get NFT list to backend");
+    }
+    const responseJson = await response.json();
+    return responseJson.result.account_nfts;
+  };
+
+  // NFTのペイロードを取得
+  const getNftPayload = async (cid: string) => {
+    const responseUrl = await fetch(
+      `${API_URL}/api/ipfs/geturlfromcid/${cid}`,
+      {
+        method: "GET",
+      }
+    );
+
+    if (!responseUrl.ok) {
+      throw new Error("Failed to get URL from CID to backend");
+    }
+
+    const json = await responseUrl.json();
+    const url = json.url;
+    const responsePayload = await fetch(url);
+    if (!responsePayload.ok) {
+      throw new Error("Failed to get payload");
+    }
+
+    return await responsePayload.json();
+  };
+
+  // リスト取得ボタンをクリック
+  const handleGetListClick = async () => {
+    setNftListText(null);
+
+    // NFTリストを取得
+    const accountNftList = await getNftList();
+
+    // ペイロードリスト
+    const nftList: object[] = [];
+    accountNftList.forEach(async (accountNft: any) => {
+      const uriHex = accountNft.URI;
+      if (uriHex === undefined) {
+        return;
+      }
+
+      // URIからペイロードを取得
+      // TODO xrplの処理はバックエンドにまとめたい。抽出まで一括で行うAPIを作るべきか？
+      const uri = xrpl.convertHexToString(uriHex);
+      const cid = uri.replace("ipfs://", "");
+      const payload = await getNftPayload(cid);
+
+      if (payload.type !== "pet") {
+        return;
+      }
+
+      nftList.push({
+        NFTokenID: accountNft.NFTokenID,
+        payload,
+      });
+    });
+
+    console.log("nftList: ", nftList);
+    setNftListText("NFTリスト取得完了。コンソールログ見て");
+  };
+
   return (
     <div>
       {/* TODO ペット画像を表示する */}
@@ -186,6 +262,21 @@ export function DpetPage() {
         </div>
       )}
       {offerId && <div>offerId: {offerId}</div>}
+
+      {/* NFT一覧取得 */}
+      <Button
+        onClick={handleGetListClick}
+        className="px-4 py-2 bg-yellow-700 text-white rounded font-semibold hover:bg-yellow-600 transition-colors duration-200 shadow"
+      >
+        NFT一覧を取得
+      </Button>
+      {nftListText && (
+        <div>
+          <p>NFT List</p>
+          <div>{nftListText}</div>
+        </div>
+      )}
+
       {error && <div style={{ color: "yellow" }}>{error}</div>}
     </div>
   );
