@@ -10,7 +10,6 @@ import getNftTokenId from "./routes/getNftTokenId";
 import getUrlFromCid from "./routes/getUrlFromCid";
 
 import createAvatarRoute from "./routes/createAvatar";
-import getPayloadStatusRoute from "./routes/createAvatar";
 
 import createPet from "./routes/createPet";
 
@@ -36,8 +35,7 @@ app.use("/api/ipfs/uploadjson", uploadJsonRoute);
 app.use("/api/ipfs/geturlfromcid", getUrlFromCid);
 
 // AVATAR
-app.use("/api/avatar/createavatar", createAvatarRoute);
-app.use("/api/avatar/getpayloadstatus", getPayloadStatusRoute);
+app.use("/api/avatar/create", createAvatarRoute);
 
 // pet
 app.use("/api/pet/create", createPet);
