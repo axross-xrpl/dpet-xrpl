@@ -108,10 +108,10 @@ export async function getNFTTokenIdFromTx(
   }
 }
 
-// ペットNFTをミント
-export async function createPetNft(
+// NFTミントを実行し、売却オファーを作成
+export async function createNft(
   address: string,
-  jsonCid: string
+  jsonUrl: string
 ): Promise<any> {
   const client = createClient();
   await client.connect();
@@ -124,10 +124,13 @@ export async function createPetNft(
         TransactionType: "NFTokenMint",
         Account: wallet.address,
         NFTokenTaxon: 0,
-        URI: xrpl.convertStringToHex(`ipfs://${jsonCid}`),
+        URI: xrpl.convertStringToHex(jsonUrl),
         // TODO 販売金額を設定
         Amount: xrpl.xrpToDrops("10"),
         Destination: address,
+        Flags:
+          xrpl.NFTokenMintFlags.tfTransferable |
+          xrpl.NFTokenMintFlags.tfMutable,
       },
       {
         wallet,
