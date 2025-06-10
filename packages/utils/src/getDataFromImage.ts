@@ -33,7 +33,6 @@ export async function postImageForm(file: Express.Multer.File | File): Promise<a
       // If parsing fails, keep as string
     }
   }
-  console.log("Image upload response:", data);
 
   return data;
 }
