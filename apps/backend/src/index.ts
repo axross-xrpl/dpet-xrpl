@@ -8,6 +8,7 @@ import uploadFileRoute from "./routes/uploadFile";
 import uploadJsonRoute from "./routes/uploadJson";
 import getNftTokenId from "./routes/getNftTokenId";
 import getUrlFromCid from "./routes/getUrlFromCid";
+import getNftokenModifyTransactions from "./routes/getNftokenModifyTransactions";
 
 import createAvatarRoute from "./routes/createAvatar";
 
@@ -29,6 +30,7 @@ app.use("/api/xrpl/account", accountRoute);
 app.use("/api/xrpl/balance", balanceRoute);
 app.use("/api/xrpl/nfts", nftsRoute);
 app.use("/api/xrpl/getnftokenid", getNftTokenId);
+app.use("/api/xrpl/modifylist", getNftokenModifyTransactions);
 
 // IPFS
 app.use("/api/ipfs/uploadfile", uploadFileRoute);

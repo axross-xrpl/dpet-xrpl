@@ -2,7 +2,7 @@ import React from "react";
 
 interface PopupProps {
   open: boolean;
-  title?: string;
+  title?: React.ReactNode;
   message?: string;
   onClose: () => void;
   children?: React.ReactNode;
