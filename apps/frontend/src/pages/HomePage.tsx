@@ -13,8 +13,8 @@ export function HomePage() {
   const [showPopup, setShowPopup] = useState(false);
   const [showMealPopup, setShowMealPopup] = useState(false);
   const [mealDescription, setMealDescription] = useState('');
-  const [calories, setCalories] = useState('');
-  const [mealTime, setMealTime] = useState('');
+  const [calories, setCalories] = useState<number | ''>('');
+  const [mealTime, setMealTime] = useState<'Breakfast' | 'Lunch' | 'Dinner'>('Breakfast');
   const [userInfo, setUserInfo] = useState<{ name: string; avatar: 'A' | 'B'; tokenId: string; } | null >(null);
   const [name, setName] = useState('');
   const [avatarType, setAvatarType] = useState<'A' | 'B'>('A');
@@ -149,7 +149,7 @@ export function HomePage() {
         TransactionType: "NFTokenMint",
         Account: account,
         URI: convertStringToHex(metadataIpfsUrl), // URIはHexエンコードで送信
-        Flags: 16, // Dynamic NFT:16
+        Flags: 16, // Dynamic NFT:16(tfMutableフラグ)
         NFTokenTaxon: 0,
       });
 
@@ -274,6 +274,51 @@ export function HomePage() {
       setShowQr(false);
       console.error("Error minting NFT:", error);
     }
+  };
+
+  /**
+   * [owner] NFTのメタデータを更新する
+   * @param newMealDescription 食事内容
+   * @param newCalories カロリー
+   * @param selectedMealTime 食事時間（日付と時刻）
+   */
+  const handleUpdateNftMetadata = async (newMealDescription: string, newCalories: number, selectedMealTime: 'Breakfast' | 'Lunch' | 'Dinner') => {
+    // 現在の日付と時刻を取得
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // 月は0から始まるため+1
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    // dateフォーマット 'YYYY-MM-DD:HH:MM:SS'
+    const formattedDate = `${year}-${month}-${day}:${hours}:${minutes}:${seconds}`;
+    console.log(selectedMealTime);
+
+    const updatedEatTime = {
+      name: newMealDescription,
+      date: formattedDate, // 現在時刻と選択された食事時間を組み合わせる
+      calories: newCalories, // 数値に変換
+    };
+
+    // ここでIPFSへのアップロード処理や、アバターNFTのメタデータ更新処理を呼び出す
+    // 例: uploadMetadataToIpfs(updatedMetadata);
+    // 例: updateDynamicNft(updatedMetadata);
+
+    // 更新内容
+    const updatedMetadata = {
+      user_name: userInfo ? userInfo.name : '',
+      image: 'ipfs://cid',
+      avatarType: userInfo ? userInfo.avatar : '',
+      date: `${year}/${month}/${day}`,
+      type: 'avatar',
+      body_type: 'average',
+      eat_time: updatedEatTime
+    };
+
+    console.log("Updated NFT Metadata:", updatedMetadata);
+
   };
 
   return (
@@ -515,7 +560,20 @@ export function HomePage() {
               <Input
                 type="number"
                 value={calories} // calories はカロリーを保持するState
-                onChange={(e) => setCalories(e.target.value)} // setCalories はState更新関数
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setCalories(''); // 空文字列の場合はそのままStateを更新
+                  } else {
+                    const parsedValue = parseInt(value, 10);
+                    if (!isNaN(parsedValue)) { // 数値に変換できたか確認
+                      setCalories(parsedValue); // 数値に変換してStateを更新
+                    } else {
+                      // 例: 無効な入力があった場合の処理 (エラー表示など)
+                      setCalories(''); // またはエラー状態に
+                    }
+                  }
+                }} // setCalories はState更新関数
                 placeholder="e.g., 500"
                 className="mt-1 w-full p-2 border border-gray-300 rounded"
               />
@@ -567,10 +625,12 @@ export function HomePage() {
             <Button
               className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded font-semibold"
               onClick={() => {
-                // ここにアバターNFTのメタデータを更新するロジックを記述
-                // 例: handleUpdateNftMetadata(mealDescription, calories, mealTime);
-                console.log("Meal Updated:", { mealDescription, calories, mealTime });
+                const parsedCalories = typeof calories === 'number' ? calories : 0;
+                handleUpdateNftMetadata(mealDescription, parsedCalories, mealTime);
                 setShowMealPopup(false);
+                setMealDescription('');
+                setCalories('');
+                setMealTime('Breakfast');
               }}
             >
               Update
