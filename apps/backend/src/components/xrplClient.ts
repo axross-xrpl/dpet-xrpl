@@ -177,3 +177,78 @@ export async function acceptSellOffer(
     await client.disconnect();
   }
 }
+
+// Retrieves NFTokenModify transactions
+export async function getNFTokenModifyTransactions(address: string) {
+  const client = createClient();
+  await client.connect();
+  try {
+    let marker: any = undefined;
+    let allTransactions: any[] = [];
+
+    do {
+      // Fetch transactions for the account with pagination
+      const response = await client.request({
+        command: "account_tx",
+        account: address,
+        ledger_index_min: -1,
+        ledger_index_max: -1,
+        forward: false,
+        marker: marker,
+      });
+
+      allTransactions = allTransactions.concat(response.result.transactions);
+      marker = response.result.marker;
+
+    } while (marker);
+
+    
+    if (allTransactions.length === 0) {
+      // No transactions found at all after attempting pagination
+      throw new Error(`No transactions found for account: ${address}`);
+    }
+
+    // Filter transactions to include only NFTokenModify transactions
+    const nftModifyTransactions = allTransactions.filter(
+      (tx: any) => tx.tx_json?.TransactionType === "NFTokenModify"
+    );
+    
+    if (nftModifyTransactions.length === 0) {
+      // No NFTokenModify transactions found after fetching all transactions
+      throw new Error(`No NFTokenModify transactions found for account: ${address}`);
+    }
+
+    // Group URIs by NFTokenID
+    const groupedByTokenId: Record<string, string[]> = {};
+
+    nftModifyTransactions.forEach((tx: any) => {
+      const transactionDetails = tx.tx_json; 
+      if (!transactionDetails || !transactionDetails.NFTokenID) {
+        return; 
+      }
+      const nftokenId = transactionDetails.NFTokenID;
+      const uri = transactionDetails.URI ? xrpl.convertHexToString(transactionDetails.URI) : undefined; // Decode URI
+
+      if (uri) {
+        if (!groupedByTokenId[nftokenId]) {
+          groupedByTokenId[nftokenId] = [];
+        }
+        groupedByTokenId[nftokenId].push(uri);
+      }
+    });
+
+    // Convert the grouped object into the desired array format
+    const formattedTransactions = Object.keys(groupedByTokenId).map(nftokenId => ({
+      NFTokenID: nftokenId,
+      URIs: groupedByTokenId[nftokenId],
+    }));
+
+    return formattedTransactions;
+  
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to get NFTokenModify transactions: ${errorMessage}`);
+  } finally {
+    await client.disconnect();
+  }
+}
