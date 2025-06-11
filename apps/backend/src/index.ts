@@ -12,6 +12,7 @@ import getUrlFromCid from "./routes/getUrlFromCid";
 import createAvatarRoute from "./routes/createAvatar";
 
 import createPet from "./routes/createPet";
+import acceptSellOffer from "./routes/acceptSellOffer";
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use("/api/avatar/create", createAvatarRoute);
 
 // pet
 app.use("/api/pet/create", createPet);
+app.use("/api/pet/acceptSellOffer", acceptSellOffer);
 
 app.listen(port, () => {
   console.log(`Backend listening at http://localhost:${port}`);
