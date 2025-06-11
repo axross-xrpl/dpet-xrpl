@@ -1,41 +1,12 @@
 import { useState } from "react";
 import { Input } from "@repo/ui/input";
 import { Button } from "@repo/ui/button";
-import { Popup } from "@repo/ui/popup";
-import img from "../../../frontend/src/assets/avatars/avatar-a001.jpg";
-
-const memories = [
-  // type: "pet" (initial)
-  {
-    pet_name: "ぼち",
-    image: img,
-    date: "2025/04/22",
-    type: "pet",
-    pet_type: "dog001",
-    generations: "gen1",
-  },
-  // type: "pet" (with meal)
-  {
-    pet_name: "ぼち",
-    image: img,
-    date: "2025/05/06",
-    type: "pet",
-    pet_type: "dog002",
-    generations: "gen2",
-    food_name: "Ramen",
-    food_image: "https://gateway.pinata.cloud/ipfs/<食事画像IPFSハッシュ>",
-    meal_date: "2025/05/06",
-    Impressions: "It was very good ramen! It's my favorite!",
-  },
-  // ...more memories
-];
 
 export function DpetPage() {
   const [ipfsUrl, setIpfsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [open, setOpen] = useState(false);
 
   const API_URL = import.meta.env.VITE_BACKEND_URL!;
 
