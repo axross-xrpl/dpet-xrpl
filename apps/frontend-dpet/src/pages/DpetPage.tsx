@@ -69,45 +69,6 @@ export function DpetPage() {
         </div>
       )}
       {error && <div style={{ color: "yellow" }}>{error}</div>}
-      <Button onClick={() => setOpen(true)}>Show Popup</Button>
-      <Popup
-        open={open}
-        title="Memory"
-        message="ポップアップ画面"
-        onClose={() => setOpen(false)}
-      >
-        <div className="rounded-xl p-4 max-h-[70vh] overflow-y-auto bg-[#fffbe8]">
-          {memories.map((memory, idx) => (
-            <div key={idx} className="mb-8 last:mb-0">
-              <div className="font-bold text-xl mb-2 text-left">{memory.date}</div>
-              <img
-                src={memory.image}
-                alt={memory.pet_name}
-                className="w-48 h-48 object-cover rounded-xl mx-auto mb-2"
-              />
-              <div className="text-center font-semibold">{memory.pet_name}</div>
-              <div className="text-center text-sm text-gray-700 mb-2">
-                {memory.pet_type} / {memory.generations}
-              </div>
-              {/* Show meal info if present */}
-              {memory.food_name && (
-                <div className="mt-4">
-                  <div className="font-semibold text-left">{memory.meal_date} - {memory.food_name}</div>
-                  <img
-                    src={memory.food_image}
-                    alt={memory.food_name}
-                    className="w-32 h-32 object-cover rounded-lg mx-auto my-2"
-                  />
-                  <div className="text-center text-sm text-gray-700">{memory.Impressions}</div>
-                </div>
-              )}
-              {idx !== memories.length - 1 && (
-                <hr className="my-6 border-t border-yellow-300" />
-              )}
-            </div>
-          ))}
-        </div>
-      </Popup>
     </div>
   );
 }
