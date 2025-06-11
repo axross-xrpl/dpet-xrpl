@@ -132,6 +132,7 @@ export function DpetPage() {
       setIpfsUrl(imageUrl);
 
       // JSONデータを作成
+      // TODO pet_name, pet_typeを画面から取得
       const jsonData = {
         pet_name: "petName",
         image: imageUrl,
@@ -200,6 +201,8 @@ export function DpetPage() {
     setNftListText(null);
 
     // NFTリストを取得
+    // TODO NFTokenIDリストを渡して、ペイロード情報で返すようなAPIに修正する
+    // TODO ログイン時にNFTリストを取得し、avatar/petそれぞれのNFTokenIDリストとして内部に保持
     const accountNftList = await getNftList();
 
     // ペイロードリスト
