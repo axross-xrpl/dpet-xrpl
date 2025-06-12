@@ -2,8 +2,28 @@ import { useXumm } from "../contexts/XummContext";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
 import { useState } from "react";
+import { useEffect } from "react";
 import { convertStringToHex } from "xrpl";
+import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
+import { stringToHex } from "@repo/utils/stringToHex"; 
+import * as xrpl from "xrpl";
+import { LoadingOverlay } from "@repo/ui/loadingOverlay";
 
+// 型定義（体形）
+type BodyType = 'thin' | 'average' | 'fat';
+// 型定義（ユーザー情報）
+type UserInfo = {
+  name: string;
+  avatar: 'A' | 'B';
+  tokenId: string;
+  body_type: BodyType;
+  image: string; // アバター画像のIPFS URL
+};
+
+/**
+ * メインコンポーネント
+ * @returns 
+ */
 export function HomePage() {
   const { xumm } = useXumm();
   const account = xumm.state.account;
@@ -15,24 +35,33 @@ export function HomePage() {
   const [mealDescription, setMealDescription] = useState('');
   const [calories, setCalories] = useState<number | ''>('');
   const [mealTime, setMealTime] = useState<'Breakfast' | 'Lunch' | 'Dinner'>('Breakfast');
-  const [userInfo, setUserInfo] = useState<{ name: string; avatar: 'A' | 'B'; tokenId: string; } | null >(null);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [name, setName] = useState('');
   const [avatarType, setAvatarType] = useState<'A' | 'B'>('A');
-  const avatarImageMap = { 
-    A: "/src/assets/avatars/avatar-a001.jpg", 
-    B: "/src/assets/avatars/avatar-b001.jpg", 
+  const [nftList, setNftList] = useState<any[]>([]);
+  const [oldAvatarPayload, setOldAvatarPayload] = useState<any | null>(null);
+  const [latestAvatarTokenId, setLatestAvatarTokenId] = useState<string | null>(null);
+  const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
+  // アバタータイプと体型に対応する画像URLのマッピング
+  const avatarImageMap: Record<'A' | 'B', Record<BodyType, string>> = {
+    A: {
+      thin: '/src/assets/avatars/avatar-a001.jpg',
+      average: '/src/assets/avatars/avatar-a002.jpg',
+      fat: '/src/assets/avatars/avatar-a003.jpg',
+    },
+    B: {
+      thin: '/src/assets/avatars/avatar-e001.jpg',
+      average: '/src/assets/avatars/avatar-e002.jpg',
+      fat: '/src/assets/avatars/avatar-e003.jpg',
+    },
   };
-  const eatTime = {
-    name: 'ramen', 
-    date: '2025-05-31:19:31:31', 
-    calories: 450,
-  }
   // dPets 仮データ
   const dPets = [
     { 
       pet_name: 'ポチ', 
       image: '/src/assets/pets/dog001.jpg', // IPFS URL:'https://ipfs.io/ipfs/Qmxxxxxx1'
-      date: '2025/06/10',
+      date: '2025-06-10',
       type: 'pet',
       pet_type: 'dog001',
       generations: 'gen1',
@@ -41,7 +70,7 @@ export function HomePage() {
     { 
       pet_name: 'もんた', 
       image: '/src/assets/pets/monkey001.jpg', // IPFS URL:'https://ipfs.io/ipfs/Qmxxxxxx2'
-      date: '2025/06/10',
+      date: '2025-06-10',
       type: 'pet',
       pet_type: 'monkey001',
       generations: 'gen1',
@@ -49,7 +78,132 @@ export function HomePage() {
        
     },
   ];
+  // 体型レベルの計算用
+  let level = null;
+  // 体型の種類
+  const bodyTypeLevels = ["thin", "average", "fat"];
+  // バックエンドAPIのURL
   const API_URL = import.meta.env.VITE_BACKEND_URL!;
+
+  //  Xummペイロードとアカウント情報が利用可能かを確認
+  if (!account) throw new Error("Account is not available.");
+  if (!xumm.payload) throw new Error("Xumm payload is not available.");
+
+  // accountが変更されるたびに最新のアバターNFT情報を取得する
+  useEffect(() => {
+    if (account) {
+      fetchAndSetLatestAvatar();
+    }
+  }, [account]);
+
+  /**
+   * 最新NFT情報を取得する
+   * ユーザーのアカウントに紐づくNFTの中から、最新のアバターNFTを検索し、userInfoなどの状態を更新
+   * @returns 
+   */
+  const fetchAndSetLatestAvatar = async () => {
+    try {
+      // ローディング表示開始
+      setIsLoadingAvatar(true);
+      console.log("Fetching NFT List for account:", account);
+
+      // NFTリスト取得
+      const response = await fetch(`${API_URL}/api/xrpl/nfts/${account}`, {
+        method: "GET",
+      });
+      const responseJson = await response.json();
+      const accountNfts = responseJson.result.account_nfts;
+      setNftList(accountNfts);
+
+      // avatarでフィルタリング
+      const avatarNfts = [];
+      for (const nft of accountNfts) {
+        const uriHex = nft.URI;
+        if (!uriHex) continue;
+
+        // URI（Hex形式）を文字列に変換し、IPFS CIDを抽出
+        const uri = xrpl.convertHexToString(uriHex);
+        const cid = uri.replace("ipfs://", "");
+
+        try {
+          // IPFSからNFTのペイロード（メタデータ）を取得
+          const payload = await getNftPayload(cid);
+
+          // typeが "avatar" の場合のみリストに追加
+          if (payload.type === "avatar") {
+            avatarNfts.push({
+              NFTokenID: nft.NFTokenID,
+              URI: uri,
+              payload,
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching payload for CID:", cid, error);
+        }
+      }
+
+      // dateが最新のavatar NFTを選ぶ（複数のアバターNFTがある場合、日付が最新のものを選択）
+      if (avatarNfts.length === 0) {
+        console.log("No avatar NFTs found.");
+         // ローディング表示終了
+        setIsLoadingAvatar(false);
+        return;
+      }
+
+      // 日付で降順ソート
+      avatarNfts.sort((a, b) => {
+        const dateA = new Date(a.payload.date).getTime();
+        const dateB = new Date(b.payload.date).getTime();
+        return dateB - dateA;
+      });
+      console.log("avatar NFT List:", avatarNfts);
+
+      // 最も新しいアバターNFT
+      const latestAvatar = avatarNfts[0];
+
+      // oldPayload + userInfo にセット
+      setOldAvatarPayload(latestAvatar.payload);
+      setLatestAvatarTokenId(latestAvatar.NFTokenID);
+
+      setUserInfo({
+        name: latestAvatar.payload.user_name,
+        avatar: latestAvatar.payload.avatarType,
+        tokenId: latestAvatar.NFTokenID,
+        body_type: latestAvatar.payload.body_type,
+        image: latestAvatar.payload.image,
+      });
+
+      console.log("Latest avatar NFT:", latestAvatar);
+
+    } catch (error) {
+      console.error("Error fetching NFT list or avatar payload:", error);
+    } finally {
+      setIsLoadingAvatar(false);
+    }
+  };
+
+  /**
+   * 体型レベル判定ロジック
+   * currentBodyType と calories から次の body_type を判定
+   * @param currentBodyType 現在の体型
+   * @param calories 摂取カロリー
+   * @returns 
+   */
+  const calculateNewBodyType = (currentBodyType: BodyType, calories: number): BodyType => {
+    // 現在の体型のインデックス
+    level = bodyTypeLevels.indexOf(currentBodyType);
+
+    // カロリーに応じて体型レベルを調整
+    if (calories >= 500) {
+      level += 1;
+    } else if (calories <= 100) {
+      level -= 1;
+    }
+    level = Math.max(0, Math.min(bodyTypeLevels.length - 1, level));
+    
+    // 新しい体型を返す
+    return bodyTypeLevels[level] as BodyType;
+  };
 
   /**
    * [owner] NFTミント処理
@@ -76,15 +230,17 @@ export function HomePage() {
       console.log("Uploading Avatar image to IPFS...");
 
       // 選択されたアバタータイプ（'A'or'B'）に対応する画像URLをavatarImageMapから取得
-      const avatarImageUrl = avatarImageMap[avatar];
+      const avatarImageUrl = avatarImageMap[avatar]['average'];
 
       // アバター画像をfetchしてBlob化
       const imageResponse = await fetch(avatarImageUrl);
       const imageBlob = await imageResponse.blob();
 
+      const avatarImageFileName = avatarImageUrl.split('/').pop() || `${avatar}.jpg`;
+
       // FormDataオブジェクトを作成し、画像を添付
       const formData = new FormData();
-      formData.append("avatarImage", imageBlob, `${avatar}.jpg`);
+      formData.append("avatarImage", imageBlob, avatarImageFileName);
 
       // アバター画像をIPFSへアップロード
       const uploadFileResponse = await fetch(`${API_URL}/api/avatar/create/upload-file`, {
@@ -107,16 +263,29 @@ export function HomePage() {
       // ---------------------------------------
       console.log("Uploading NFT metadata to IPFS...");
 
+      // 現在の日付と時刻を取得
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0'); // 月は0から始まるため+1
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+
+      // dateフォーマット 'YYYY-MM-DD:HH:MM:SS'
+      const formattedDate = `${year}-${month}-${day}:${hours}:${minutes}:${seconds}`;
+
       // NFTのメタデータを作成
       const metadata = {
         user_name: userName,
         image:ipfsUrl,
         avatarType: avatar,
-        date: '2025/06/10',
+        date: formattedDate,
         type: 'avatar',
         body_type: 'average',
-        eat_time: eatTime
+        // eat_time: eatTime
       };
+      console.log(`ミント時のメタデータ： ${metadata}`)
 
       // メタデータJSONをIPFSへアップロード
       const uploadJsonResponse = await fetch(`${API_URL}/api/avatar/create/upload-json`, {
@@ -219,7 +388,13 @@ export function HomePage() {
                   console.log("NFT TokenID:", tokenId);
 
                   // UIを更新 & ポーリング停止
-                  setUserInfo({ name: userName, avatar, tokenId });
+                  setUserInfo({
+                    name: userName,
+                    avatar,
+                    tokenId,
+                    body_type: 'average', // Mint時は 'average' 固定
+                    image: ipfsUrl, // Mint時にアップロードしたアバター画像
+                  });
                   setMintStatus("NFT Minted! 🎉");
                   setShowQr(false);
                   clearInterval(poll);
@@ -299,33 +474,251 @@ export function HomePage() {
     const updatedEatTime = {
       name: newMealDescription,
       date: formattedDate, // 現在時刻と選択された食事時間を組み合わせる
-      calories: newCalories, // 数値に変換
+      calories: newCalories,
     };
 
-    // ここでIPFSへのアップロード処理や、アバターNFTのメタデータ更新処理を呼び出す
-    // 例: uploadMetadataToIpfs(updatedMetadata);
-    // 例: updateDynamicNft(updatedMetadata);
+    const currentBodyType = userInfo?.body_type;
+    const currentImageIpfsUrl = userInfo?.image;
 
-    // 更新内容
+    const newBodyType = calculateNewBodyType(currentBodyType as BodyType, newCalories);
+
+    let newImageIpfsUrl: string = currentImageIpfsUrl ?? "";
+
+    // 画像差し替えが必要ならIPFSにアップロード
+    if (newBodyType !== currentBodyType) {
+      console.log(`Body type changed: ${currentBodyType} → ${newBodyType}, uploading new avatar image...`);
+
+      if (!userInfo) {
+        throw new Error("userInfo is not available.");
+      }
+      const avatarType: 'A' | 'B' = userInfo.avatar;
+      const avatarImagePath = avatarImageMap[avatarType][newBodyType];
+
+      // アバター画像をfetchしてBlob化
+      const imageResponse = await fetch(avatarImagePath);
+      const imageBlob = await imageResponse.blob();
+
+      // FormDataオブジェクトを作成し、画像を添付
+      const formData = new FormData();
+      formData.append("avatarImage", imageBlob, `${avatarType}-${newBodyType}.jpg`);
+
+      // アバター画像をIPFSへアップロード
+      const uploadFileResponse = await fetch(`${API_URL}/api/avatar/create/upload-file`, {
+        method: "POST",
+        body: formData,
+      });
+
+      // エラーハンドリング
+      if (!uploadFileResponse.ok) {
+        throw new Error("Failed to uploading avatar image file to IPFS.");
+      }
+
+      // IPFS上のURLを取得
+      const uploadFileData = await uploadFileResponse.json();
+      const uploadedImageUrl: string = uploadFileData.ipfsUrl;
+      if (!uploadedImageUrl) {
+        throw new Error("Failed to get uploaded avatar image URL.");
+      }
+      newImageIpfsUrl = uploadedImageUrl;
+      console.log("New avatar image uploaded to IPFS:", newImageIpfsUrl);
+    } else {
+      console.log("Body type unchanged. Keeping current avatar image.");
+    }
+
+    // メタデータJSON更新
     const updatedMetadata = {
       user_name: userInfo ? userInfo.name : '',
-      image: 'ipfs://cid',
+      image: newImageIpfsUrl,
       avatarType: userInfo ? userInfo.avatar : '',
-      date: `${year}/${month}/${day}`,
+      date: oldAvatarPayload?.date || '',
       type: 'avatar',
-      body_type: 'average',
-      eat_time: updatedEatTime
+      body_type: newBodyType,
+      eat_time: updatedEatTime,
     };
+
+    const uploadJsonResponse = await fetch(`${API_URL}/api/avatar/create/upload-json`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedMetadata),
+    });
+
+    // エラーハンドリング
+    if (!uploadJsonResponse.ok) {
+      throw new Error("Failed to upload updated metadata to IPFS.");
+    }
+
+    const uploadJsonData = await uploadJsonResponse.json();
+    const metadataIpfsUrl = `ipfs://${uploadJsonData.cid}`;
+    console.log("Updated metadata uploaded to IPFS:", metadataIpfsUrl);
+
+    const tokenId = userInfo?.tokenId;
+    if (!tokenId) {
+      console.error("TokenID is not available.");
+      return;
+    }
+
+    // NFTokenModify payload を作成
+    const nftModifyPayload = createNFTokenModifyPayload({
+      Account: account!,
+      NFTokenID: tokenId,
+      Flags: 0, // mutableな場合は 0、immutableにするなら 1（今回は更新なので 0）
+      URI: stringToHex(metadataIpfsUrl),
+    });
+
+    // Xumm 経由で署名リクエスト送信(QRコード表示)
+    setShowQr(true);
+
+    const payloadResponse = await xumm.payload?.create(nftModifyPayload as any);
+
+    // エラーハンドリング
+    if (!payloadResponse) {
+      setMintStatus("Failed to create NFTokenModify payload.");
+      setShowQr(false);
+      return;
+    }
+
+    const payloadUuid = payloadResponse.uuid;
+    const qrPng = payloadResponse.refs.qr_png;
+
+    // QRコードを画面にセット
+    setQrUrl(qrPng || null);
+    console.log("NFTokenModify Payload created. Waiting for signature...");
+
+    // ポーリングで署名確認
+    let isSigned = false;
+
+    const poll = setInterval(async () => {
+      if (!xumm.payload) {
+        setMintStatus("Xumm payload is not available.");
+        setShowQr(false);
+        clearInterval(poll);
+        return;
+      }
+
+      const status = await xumm.payload?.get(payloadUuid);
+
+      if (status && status.meta.signed) {
+        if (!isSigned) {
+          console.log("NFTokenModify payload signed!");
+          isSigned = true;
+          setMintStatus("NFT metadata updated! 🎉");
+          setShowQr(false);
+          clearInterval(poll);
+
+          // UI更新
+          setUserInfo({
+            ...userInfo!,
+            body_type: newBodyType,
+            image: newImageIpfsUrl,
+          });
+
+        }
+      } else if (status && status.meta.expired) {
+        setMintStatus("Modify request expired.");
+        setShowQr(false);
+        clearInterval(poll);
+      }
+    }, 2000);
 
     console.log("Updated NFT Metadata:", updatedMetadata);
 
+    // 最新NFT情報を再取得する
+    await fetchAndSetLatestAvatar();
+  };
+
+  /**
+   * NFTリストを取得
+   * @returns 
+   */
+  const getNftList = async () => {
+    if (!account) {
+      console.error("Account is not available.");
+      return;
+    }
+
+    const response = await fetch(`${API_URL}/api/xrpl/nfts/${account}`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to get NFT list from backend");
+    }
+
+    const responseJson = await response.json();
+    return responseJson.result.account_nfts;
+  };
+
+  /**
+   * NFTのペイロードを取得
+   * @param cid 
+   * @returns 
+   */
+  const getNftPayload = async (cid: string) => {
+    const responseUrl = await fetch(`${API_URL}/api/ipfs/geturlfromcid/${cid}`, {
+      method: "GET",
+    });
+
+    if (!responseUrl.ok) {
+      throw new Error("Failed to get URL from CID to backend");
+    }
+
+    const json = await responseUrl.json();
+    const url = json.url;
+
+    const responsePayload = await fetch(url);
+    if (!responsePayload.ok) {
+      throw new Error("Failed to get payload");
+    }
+
+    return await responsePayload.json();
+  };
+
+  /**
+   * NFTリスト取得ボタンの処理
+   */
+  const handleGetNftListClick = async () => {
+    try {
+      console.log("Getting NFT list...");
+      const accountNftList = await getNftList();
+
+      const nftListTmp: object[] = [];
+      for (const accountNft of accountNftList) {
+        const uriHex = accountNft.URI;
+        if (uriHex === undefined) {
+          continue;
+        }
+
+        const uri = xrpl.convertHexToString(uriHex);
+        const cid = uri.replace("ipfs://", "");
+        const payload = await getNftPayload(cid);
+
+        if (payload.type !== "avatar") {
+          continue;
+        }
+
+        nftListTmp.push({
+          NFTokenID: accountNft.NFTokenID,
+          URI: uri,
+          payload,
+        });
+      }
+
+      console.log("NFT List:", nftListTmp);
+      setNftList(nftListTmp);
+
+      // 比較表示をONにする
+      setShowCompare(true);
+    } catch (error) {
+      console.error("Error getting NFT list:", error);
+    }
   };
 
   return (
     <div className="flex-1 flex items-center justify-center w-full">
-      {/* ▼ Mintステータス */}
-      {mintStatus && (
-        <div className="mt-4 text-lg font-bold text-green-700">{mintStatus}</div>
+
+      {/* ▼ Loading */}
+      {isLoadingAvatar && (
+        <LoadingOverlay message="Loading ..." />
       )}
 
       {/* ▼ Mint前 */}
@@ -333,6 +726,11 @@ export function HomePage() {
         <div className="w-full">
           {/* Mintエリア */}
           <div className="bg-yellow-100 p-8 rounded-xl shadow-lg w-full max-w-5xl mx-auto h-full flex flex-col items-center gap-8">
+            {/* ▼ Mintステータス */}
+            {mintStatus && (
+              <div className="mt-4 text-lg font-bold text-green-700">{mintStatus}</div>
+            )}
+
             <h1 className="text-xl font-bold text-center">Get Your Profile NFT!</h1>
             <Button
               className="self-center px-8 py-2 bg-yellow-400 text-black text-lg font-semibold rounded-full shadow-lg hover:bg-yellow-500 transition duration-200"
@@ -368,13 +766,18 @@ export function HomePage() {
         <div className="w-full">
           {/* Profileエリア */}
           <div className="bg-yellow-100 p-8 rounded-xl shadow-lg w-full max-w-5xl mx-auto h-full flex flex-col items-center gap-8">
+            {/* ▼ Mintステータス */}
+            {mintStatus && (
+              <div className="mt-4 text-lg font-bold text-green-700">{mintStatus}</div>
+            )}
+
             {/* 上エリア：flex-row */}
             <div className="flex w-full gap-8">
               {/* 左エリア */}
               <div className="flex flex-col items-center flex-1 gap-4">
                 {/* アバター画像 */}
                 <img
-                  src={`/src/assets/avatars/avatar-${userInfo.avatar === 'A' ? 'a001' : 'b001'}.jpg`}
+                  src={avatarImageMap[userInfo.avatar][userInfo.body_type]}
                   alt="User Avatar"
                   className="w-48 h-48 object-contain"
                 />
@@ -417,6 +820,27 @@ export function HomePage() {
                 Have a Meal
               </Button>
             </div>
+
+            <div className="flex justify-center mt-4">
+              {/* NFTリスト取得ボタン */}
+              <Button
+                className="self-center px-8 py-2 bg-green-400 text-black text-lg font-semibold rounded-full shadow-lg hover:bg-green-500 transition duration-200"
+                onClick={handleGetNftListClick}
+              >
+                Get NFT List (Check Latest Avatar)
+              </Button>
+            </div>
+
+            {/* 比較表示 */}
+            {showCompare && oldAvatarPayload && userInfo && (
+              <div className="mt-4 p-4 border rounded bg-gray-100 text-sm w-full max-w-5xl mx-auto">
+                <h3 className="text-lg font-bold mb-2">Avatar NFT Metadata (Before → After)</h3>
+                <p><strong>Body Type:</strong> {oldAvatarPayload.body_type} → {userInfo.body_type}</p>
+                <p><strong>Image:</strong> {oldAvatarPayload.image} → {userInfo.image}</p>
+                <p><strong>Name:</strong> {oldAvatarPayload.user_name} → {userInfo.name}</p>
+                <p><strong>Avatar Type:</strong> {oldAvatarPayload.avatarType} → {userInfo.avatar}</p>
+              </div>
+            )}
           </div>
 
           {/* Your dPets セクション */}
@@ -495,7 +919,7 @@ export function HomePage() {
                     checked={avatarType === 'A'}
                     onChange={() => setAvatarType('A')}
                   />
-                  <img src="/src/assets/avatars/avatar-a001.jpg" alt="Type A" className="w-24 h-24" />
+                  <img src="/src/assets/avatars/avatar-a002.jpg" alt="Type A" className="w-24 h-24" />
                   <span>Type A</span>
                 </label>
 
@@ -507,7 +931,7 @@ export function HomePage() {
                     checked={avatarType === 'B'}
                     onChange={() => setAvatarType('B')}
                   />
-                  <img src="/src/assets/avatars/avatar-b001.jpg" alt="Type B" className="w-24 h-24" />
+                  <img src="/src/assets/avatars/avatar-e002.jpg" alt="Type B" className="w-24 h-24" />
                   <span>Type B</span>
                 </label>
               </div>
@@ -664,11 +1088,6 @@ export function HomePage() {
           </div>
         </div>
       )}
-
-      {/* ▼ Mintステータス */}
-      {/* {mintStatus && (
-        <div className="mt-4 text-lg font-bold text-green-700">{mintStatus}</div>
-      )} */}
 
     </div>
   );
