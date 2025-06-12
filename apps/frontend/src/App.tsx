@@ -19,60 +19,61 @@ function App() {
   const [currency, setCurrency] = useState<string | null>(null);
 
   useEffect(() => {
-  const checkLoginStatus = async () => {
+    const checkLoginStatus = async () => {
+      try {
+        const xummState = xumm.state.signedIn;
+        if (xummState) {
+          const userAccount = xumm.state.account;
+          setIsLoggedIn(true);
+          setAccount(userAccount ?? null);
+          await fetchBalance(userAccount);
+        } else {
+          setIsLoggedIn(false);
+          setAccount(null);
+        }
+      } catch (error) {
+        console.error("Error checking login status", error);
+      }
+    };
+
+    checkLoginStatus();
+  }, [xumm]);
+
+  const fetchBalance = async (account: string) => {
+    if (!account) return;
     try {
-      const xummState = xumm.state.signedIn;
-      if (xummState) {
-        const userAccount =  xumm.state.account;
-        setIsLoggedIn(true);
-        setAccount(userAccount ?? null);
-        await fetchBalance(userAccount);
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/xrpl/balance/${account}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch balance");
       }
-      else {
-        setIsLoggedIn(false);
-        setAccount(null);
-      }
+      const data = await response.json();
+      setBalance(data[0].value ?? null);
+      setCurrency(data[0].currency ?? null);
     } catch (error) {
-      console.error("Error checking login status", error);
+      console.error("Error fetching balance", error);
+      setBalance(null);
     }
   };
 
-  checkLoginStatus();
-}, [xumm]);
-
-const fetchBalance = async (account: string) => {
-  if (!account) return;
-  try {
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/xrpl/balance/${account}`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch balance");
-    }
-    const data = await response.json();
-    setBalance(data[0].value ?? null);
-    setCurrency(data[0].currency ?? null);
-  } catch (error) {
-    console.error("Error fetching balance", error);
-    setBalance(null);
-  }
-};
-
   const handleSignIn = async () => {
-  if (isLoggedIn) return;
-  try {
-    await xumm.authorize().then(async (flow) => {
-      if (!flow || (flow as any).me?.account === undefined) {
-        console.error("Authorization flow not returned or account missing");
-        return;
-      }
-      const account = (flow as any).me.account;
-      setIsLoggedIn(true);
-      setAccount(account ?? null);
-      await fetchBalance(account);
-    });
-  } catch (error) {
-    console.error("Error during sign-in", error);
-  }
-};
+    if (isLoggedIn) return;
+    try {
+      await xumm.authorize().then(async (flow) => {
+        if (!flow || (flow as any).me?.account === undefined) {
+          console.error("Authorization flow not returned or account missing");
+          return;
+        }
+        const account = (flow as any).me.account;
+        setIsLoggedIn(true);
+        setAccount(account ?? null);
+        await fetchBalance(account);
+      });
+    } catch (error) {
+      console.error("Error during sign-in", error);
+    }
+  };
 
   const handleLogout = async () => {
     if (!isLoggedIn) return;
@@ -83,8 +84,7 @@ const fetchBalance = async (account: string) => {
         setBalance(null);
         setCurrency(null);
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error during logout", error);
     }
   };
@@ -94,7 +94,6 @@ const fetchBalance = async (account: string) => {
       {!isLoggedIn ? (
         // Show login page or prompt
         <div className="flex flex-col items-center justify-center min-h-screen bg-yellow-50 border-8 border-yellow-100">
-
           <img
             src={dnftLogo}
             alt="Xumm Logo"
@@ -113,10 +112,7 @@ const fetchBalance = async (account: string) => {
           <div className="min-h-screen flex flex-col">
             <nav className="p-4 bg-yellow-100 flex items-center justify-between shadow-md">
               <div className="flex gap-4">
-                <NavLink
-                  to="/"
-                  end
-                >
+                <NavLink to="/" end>
                   <img
                     src={dnftLogo}
                     alt="dnft Logo"
@@ -127,9 +123,10 @@ const fetchBalance = async (account: string) => {
                   to="/"
                   end
                   className={({ isActive }) =>
-                    `px-4 py-2 rounded transition-colors duration-200 font-semibold ${isActive
-                      ? "bg-yellow-700 text-white"
-                      : "text-yellow-700 hover:bg-yellow-200"
+                    `px-4 py-2 rounded transition-colors duration-200 font-semibold ${
+                      isActive
+                        ? "bg-yellow-700 text-white"
+                        : "text-yellow-700 hover:bg-yellow-200"
                     }`
                   }
                 >
@@ -139,9 +136,10 @@ const fetchBalance = async (account: string) => {
                   to="/dpet"
                   end
                   className={({ isActive }) =>
-                    `px-4 py-2 rounded transition-colors duration-200 font-semibold ${isActive
-                      ? "bg-yellow-700 text-white"
-                      : "text-yellow-700 hover:bg-yellow-200"
+                    `px-4 py-2 rounded transition-colors duration-200 font-semibold ${
+                      isActive
+                        ? "bg-yellow-700 text-white"
+                        : "text-yellow-700 hover:bg-yellow-200"
                     }`
                   }
                 >
@@ -151,9 +149,10 @@ const fetchBalance = async (account: string) => {
                   to="/info"
                   end
                   className={({ isActive }) =>
-                    `px-4 py-2 rounded transition-colors duration-200 font-semibold ${isActive
-                      ? "bg-yellow-700 text-white"
-                      : "text-yellow-700 hover:bg-yellow-200"
+                    `px-4 py-2 rounded transition-colors duration-200 font-semibold ${
+                      isActive
+                        ? "bg-yellow-700 text-white"
+                        : "text-yellow-700 hover:bg-yellow-200"
                     }`
                   }
                 >
@@ -175,7 +174,6 @@ const fetchBalance = async (account: string) => {
                   Logout
                 </Button>
               </div>
-
             </nav>
             <main className="flex-1 h-full bg-yellow-400 p-4">
               <Routes>
