@@ -64,7 +64,6 @@ export function DpetPage() {
   const createNft = async (jsonCid: string) => {
     // TODO ログインユーザーのアドレスを指定する
     const userAddress: string = TEST_USER_ADDRESS;
-    console.log("userAddress", userAddress);
 
     const request = {
       address: userAddress,
@@ -170,30 +169,24 @@ export function DpetPage() {
       throw new Error("Failed to get NFT list to backend");
     }
     const responseJson = await response.json();
-    return responseJson.result.account_nfts;
+    return responseJson;
   };
 
-  // NFTのペイロードを取得
-  const getNftPayload = async (cid: string) => {
-    const responseUrl = await fetch(
-      `${API_URL}/api/ipfs/geturlfromcid/${cid}`,
-      {
-        method: "GET",
-      }
-    );
+  // NFTリストを読み込む
+  const loadNftList = async (list) => {
+    const response = await fetch(`${API_URL}/api/xrpl/nfts/load`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ nftList: list }),
+    });
 
-    if (!responseUrl.ok) {
-      throw new Error("Failed to get URL from CID to backend");
+    if (!response.ok) {
+      throw new Error("Failed to lost NFT list to backend");
     }
-
-    const json = await responseUrl.json();
-    const url = json.url;
-    const responsePayload = await fetch(url);
-    if (!responsePayload.ok) {
-      throw new Error("Failed to get payload");
-    }
-
-    return await responsePayload.json();
+    const responseJson = await response.json();
+    return responseJson;
   };
 
   // リスト取得ボタンをクリック
@@ -201,36 +194,13 @@ export function DpetPage() {
     setNftListText(null);
 
     // NFTリストを取得
-    // TODO NFTokenIDリストを渡して、ペイロード情報で返すようなAPIに修正する
-    // TODO ログイン時にNFTリストを取得し、avatar/petそれぞれのNFTokenIDリストとして内部に保持
-    const accountNftList = await getNftList();
+    const nftList = await getNftList();
 
-    // ペイロードリスト
-    const nftList: object[] = [];
-    accountNftList.forEach(async (accountNft: any) => {
-      const uriHex = accountNft.URI;
-      if (uriHex === undefined) {
-        return;
-      }
+    // NFTリストのペイロード読み込む
+    const _petList = nftList.pets;
+    const petList = await loadNftList(_petList);
 
-      // URIからペイロードを取得
-      // TODO xrplの処理はバックエンドにまとめたい。抽出まで一括で行うAPIを作るべきか？
-      const uri = xrpl.convertHexToString(uriHex);
-      const cid = uri.replace("ipfs://", "");
-      const payload = await getNftPayload(cid);
-
-      if (payload.type !== "pet") {
-        return;
-      }
-
-      nftList.push({
-        NFTokenID: accountNft.NFTokenID,
-        payload,
-      });
-    });
-
-    console.log("nftList: ", nftList);
-    setNftListText("NFTリスト取得完了。コンソールログ見て");
+    setNftListText(JSON.stringify(petList));
   };
 
   return (
