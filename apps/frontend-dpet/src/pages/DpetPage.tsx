@@ -1,9 +1,12 @@
-import * as xrpl from "xrpl";
 import { useState } from "react";
 import { Input } from "@repo/ui/input";
 import { Button } from "@repo/ui/button";
+import { useXumm } from "@repo/frontend/contexts/XummContext";
 
 export function DpetPage() {
+  const { xumm, nftList } = useXumm();
+  const account = xumm.state.account;
+
   const [ipfsUrl, setIpfsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -12,8 +15,7 @@ export function DpetPage() {
   const [nftListText, setNftListText] = useState<string | null>(null);
 
   const API_URL = import.meta.env.VITE_BACKEND_URL!;
-  // .envで定義したかったが読み込めず、暫定で直接保存
-  const TEST_USER_ADDRESS = "rfiib1TjGx96EJPGvYRyc62jWZphox2An7";
+  // TODO 画面入力で取得できるようにする
   const TEST_USER_SECRET = "sEdTEkqWLJ5J74WPT4d6TFXmEdNvhjk";
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,11 +64,8 @@ export function DpetPage() {
 
   // NFTミント
   const createNft = async (jsonCid: string) => {
-    // TODO ログインユーザーのアドレスを指定する
-    const userAddress: string = TEST_USER_ADDRESS;
-
     const request = {
-      address: userAddress,
+      address: account,
       jsonUrl: `ipfs://${jsonCid}`,
     };
 
@@ -88,7 +87,7 @@ export function DpetPage() {
 
   // 売却オファーを受領
   const acceptSellOffer = async (offerId: string) => {
-    // TODO ログインユーザーのsecretを指定する
+    // TODO 画面入力からsecretを取得する
     const userSecret: string = TEST_USER_SECRET;
 
     const request = {
@@ -156,24 +155,8 @@ export function DpetPage() {
     }
   };
 
-  // NFTリストを取得
-  const getNftList = async () => {
-    // TODO ログインユーザーのアドレスを指定する
-    const userAddress: string = TEST_USER_ADDRESS;
-
-    const response = await fetch(`${API_URL}/api/xrpl/nfts/${userAddress}`, {
-      method: "GET",
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to get NFT list to backend");
-    }
-    const responseJson = await response.json();
-    return responseJson;
-  };
-
   // NFTリストを読み込む
-  const loadNftList = async (list) => {
+  const loadNftList = async (list: object[]) => {
     const response = await fetch(`${API_URL}/api/xrpl/nfts/load`, {
       method: "POST",
       headers: {
@@ -193,12 +176,8 @@ export function DpetPage() {
   const handleGetListClick = async () => {
     setNftListText(null);
 
-    // NFTリストを取得
-    const nftList = await getNftList();
-
-    // NFTリストのペイロード読み込む
-    const _petList = nftList.pets;
-    const petList = await loadNftList(_petList);
+    // ペットNFTリストのペイロード読み込む
+    const petList = await loadNftList(nftList.pets);
 
     setNftListText(JSON.stringify(petList));
   };

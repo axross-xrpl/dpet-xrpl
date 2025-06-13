@@ -17,6 +17,13 @@ function App() {
   const [account, setAccount] = useState<string | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [currency, setCurrency] = useState<string | null>(null);
+  const [nftList, setNftList] = useState<
+    | {
+        avatars: object[];
+        pets: object[];
+      }
+    | {}
+  >({});
 
   useEffect(() => {
     const checkLoginStatus = async () => {
@@ -27,6 +34,7 @@ function App() {
           setIsLoggedIn(true);
           setAccount(userAccount ?? null);
           await fetchBalance(userAccount);
+          await fetchNftList(userAccount);
         } else {
           setIsLoggedIn(false);
           setAccount(null);
@@ -57,6 +65,32 @@ function App() {
     }
   };
 
+  // NFTリストを取得
+  const fetchNftList = async (account: string) => {
+    console.log("aaaaa ", account);
+    if (!account) return;
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/xrpl/nfts/${account}`,
+        {
+          method: "GET",
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to get NFT list to backend");
+      }
+      const data = await response.json();
+      setNftList({
+        avatars: data.avatars ?? [],
+        pets: data.pets ?? [],
+      });
+      console.log("#### nftList:,", nftList);
+    } catch (error) {
+      console.error("Error fetching NFT list", error);
+      setNftList({});
+    }
+  };
+
   const handleSignIn = async () => {
     if (isLoggedIn) return;
     try {
@@ -69,6 +103,7 @@ function App() {
         setIsLoggedIn(true);
         setAccount(account ?? null);
         await fetchBalance(account);
+        await fetchNftList(account);
       });
     } catch (error) {
       console.error("Error during sign-in", error);
@@ -90,7 +125,7 @@ function App() {
   };
 
   return (
-    <XummContext.Provider value={{ xumm, isLoggedIn }}>
+    <XummContext.Provider value={{ xumm, isLoggedIn, nftList }}>
       {!isLoggedIn ? (
         // Show login page or prompt
         <div className="flex flex-col items-center justify-center min-h-screen bg-yellow-50 border-8 border-yellow-100">
