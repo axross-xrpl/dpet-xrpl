@@ -1,9 +1,7 @@
 import { useXumm } from "../contexts/XummContext";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
-import { useState } from "react";
-import { useEffect } from "react";
-import { convertStringToHex } from "xrpl";
+import { useState, useEffect } from "react";
 import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
 import { stringToHex } from "@repo/utils/stringToHex"; 
 import * as xrpl from "xrpl";
@@ -20,13 +18,10 @@ type UserInfo = {
   image: string; // アバター画像のIPFS URL
 };
 
-/**
- * メインコンポーネント
- * @returns 
- */
 export function HomePage() {
-  const { xumm } = useXumm();
+  const { xumm, nftList } = useXumm();
   const account = xumm.state.account;
+
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [showQr, setShowQr] = useState(false);
   const [mintStatus, setMintStatus] = useState<string | null>(null);
@@ -42,7 +37,8 @@ export function HomePage() {
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [recentMeals, setRecentMeals] = useState<any[]>([]);
-  // アバタータイプと体型に対応する画像URLのマッピング
+
+  // アバター画像マッピング
   const avatarImageMap: Record<'A' | 'B', Record<BodyType, string>> = {
     A: {
       thin: '/src/assets/avatars/avatar-a001.jpg',
@@ -55,6 +51,16 @@ export function HomePage() {
       fat: '/src/assets/avatars/avatar-e003.jpg',
     },
   };
+
+  // 体型の種類
+  const bodyTypeLevels = ["thin", "average", "fat"];
+
+  // 体型レベルの計算用
+  let level = null;
+
+  // バックエンドAPIのURL
+  const API_URL = import.meta.env.VITE_BACKEND_URL!;
+
   // dPets 仮データ
   const dPets = [
     { 
@@ -77,23 +83,6 @@ export function HomePage() {
        
     },
   ];
-  // 体型レベルの計算用
-  let level = null;
-  // 体型の種類
-  const bodyTypeLevels = ["thin", "average", "fat"];
-  // バックエンドAPIのURL
-  const API_URL = import.meta.env.VITE_BACKEND_URL!;
-
-  //  Xummペイロードとアカウント情報が利用可能かを確認
-  if (!account) throw new Error("Account is not available.");
-  if (!xumm.payload) throw new Error("Xumm payload is not available.");
-
-  // accountが変更されるたびに最新のアバターNFT情報を取得する
-  useEffect(() => {
-    if (account) {
-      fetchAndSetLatestAvatar();
-    }
-  }, [account]);
 
   /**
    * 最新NFT情報を取得する
@@ -106,74 +95,44 @@ export function HomePage() {
       setIsLoadingAvatar(true);
       console.log("Fetching NFT List for account:", account);
 
-      // NFTリスト取得
-      const response = await fetch(`${API_URL}/api/xrpl/nfts/${account}`, {
-        method: "GET",
-      });
-      const responseJson = await response.json();
-      const accountNfts = responseJson.result.account_nfts;
+      if (nftList && "avatars" in nftList && nftList.avatars.length > 0) {
+        const latestAvatarNft = nftList.avatars[0];
+        const { NFTokenID, URI } = latestAvatarNft;
 
-      // avatarでフィルタリング
-      const avatarNfts = [];
-      for (const nft of accountNfts) {
-        const uriHex = nft.URI;
-        if (!uriHex) continue;
+        const uriString = xrpl.convertHexToString(URI);
+        const cid = uriString.replace("ipfs://", "");
+        const responseUrl = await fetch(`${API_URL}/api/ipfs/geturlfromcid/${cid}`);
+        const jsonUrl = await responseUrl.json();
 
-        // URI（Hex形式）を文字列に変換し、IPFS CIDを抽出
-        const uri = xrpl.convertHexToString(uriHex);
-        const cid = uri.replace("ipfs://", "");
+        const responsePayload = await fetch(jsonUrl.url);
+        const payload = await responsePayload.json();
 
-        try {
-          // IPFSからNFTのペイロード（メタデータ）を取得
-          const payload = await getNftPayload(cid);
+        setOldAvatarPayload(payload);
 
-          // typeが "avatar" の場合のみリストに追加
-          if (payload.type === "avatar") {
-            avatarNfts.push({
-              NFTokenID: nft.NFTokenID,
-              URI: uri,
-              payload,
-            });
-          }
-        } catch (error) {
-          console.error("Error fetching payload for CID:", cid, error);
+        setUserInfo({
+          name: payload.user_name,
+          avatar: payload.avatarType,
+          tokenId: NFTokenID,
+          body_type: payload.body_type,
+          image: payload.image,
+        });
+
+        if (payload.eat_time) {
+          setRecentMeals([payload.eat_time]);
+        } else {
+          setRecentMeals([]);
         }
+
+        console.log("Latest avatar NFT payload updated.");
+      } else {
+        console.log("No avatar NFTs found in Context nftList.");
+        setUserInfo(null);
+        setRecentMeals([]);
       }
-
-      // dateが最新のavatar NFTを選ぶ（複数のアバターNFTがある場合、日付が最新のものを選択）
-      if (avatarNfts.length === 0) {
-        console.log("No avatar NFTs found.");
-         // ローディング表示終了
-        setIsLoadingAvatar(false);
-        return;
-      }
-
-      // 日付で降順ソート
-      avatarNfts.sort((a, b) => {
-        const dateA = new Date(a.payload.date).getTime();
-        const dateB = new Date(b.payload.date).getTime();
-        return dateB - dateA;
-      });
-      console.log("avatar NFT List:", avatarNfts);
-
-      // 最も新しいアバターNFT
-      const latestAvatar = avatarNfts[0];
-
-      // oldPayload + userInfo にセット
-      setOldAvatarPayload(latestAvatar.payload);
-
-      setUserInfo({
-        name: latestAvatar.payload.user_name,
-        avatar: latestAvatar.payload.avatarType,
-        tokenId: latestAvatar.NFTokenID,
-        body_type: latestAvatar.payload.body_type,
-        image: latestAvatar.payload.image,
-      });
-
-      console.log("Latest avatar NFT:", latestAvatar);
-
     } catch (error) {
       console.error("Error fetching NFT list or avatar payload:", error);
+      setUserInfo(null);
+      setRecentMeals([]);
     } finally {
       setIsLoadingAvatar(false);
     }
@@ -201,6 +160,11 @@ export function HomePage() {
     // 新しい体型を返す
     return bodyTypeLevels[level] as BodyType;
   };
+
+  // useEffectで Context.nftList が更新されたら Avatarを再取得
+  useEffect(() => {
+    fetchAndSetLatestAvatar();
+  }, [nftList]);
 
   /**
    * [owner] NFTミント処理
@@ -268,6 +232,7 @@ export function HomePage() {
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
+      // const formattedDate = now.toISOString().replace('T', ':').substring(0, 19);
 
       // dateフォーマット 'YYYY-MM-DD:HH:MM:SS'
       const formattedDate = `${year}-${month}-${day}:${hours}:${minutes}:${seconds}`;
@@ -313,7 +278,7 @@ export function HomePage() {
       const payloadResponse = await xumm.payload?.create({
         TransactionType: "NFTokenMint",
         Account: account,
-        URI: convertStringToHex(metadataIpfsUrl), // URIはHexエンコードで送信
+        URI: xrpl.convertStringToHex(metadataIpfsUrl), // URIはHexエンコードで送信
         Flags: 16, // Dynamic NFT:16(tfMutableフラグ)
         NFTokenTaxon: 0,
       });
@@ -462,6 +427,7 @@ export function HomePage() {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const seconds = String(now.getSeconds()).padStart(2, '0');
+    // const formattedDate = now.toISOString().replace('T', ':').substring(0, 19);
 
     // dateフォーマット 'YYYY-MM-DD:HH:MM:SS'
     const formattedDate = `${year}-${month}-${day}:${hours}:${minutes}:${seconds}`;
@@ -607,6 +573,11 @@ export function HomePage() {
             body_type: newBodyType,
             image: newImageIpfsUrl,
           });
+
+          // 状態メッセージを3秒後に非表示にする
+          setTimeout(() => {
+            setMintStatus(null);
+          }, 3000);
 
         }
       } else if (status && status.meta.expired) {
