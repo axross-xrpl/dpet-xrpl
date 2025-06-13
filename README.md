@@ -1,5 +1,7 @@
-# dpet-xrpl
-Turborepo、React、Express、TypeScriptを使ってXRPLベースのフルスタックアプリケーションを構築するためのモノレポ・ボイラープレートです。
+# Product
+AI画像解析とXRPLのDynamic NFTを利用したヘルスケアアプリ「D-Pet-chi」
+
+   - 開発中バージョンであり、XRP LedgerのDevnetを利用します。
 
 ## 特徴
 
@@ -14,12 +16,14 @@ Turborepo、React、Express、TypeScriptを使ってXRPLベースのフルスタ
 
 ```
 apps/
-  frontend/    # Reactフロントエンドアプリ
+  frontend/    # Reactフロントエンドアプリ(オーナー機能)
+  frontend-dpet/    # Reactフロントエンドアプリ(ペット機能)
   backend/     # ExpressバックエンドAPI
 packages/
   ui/                # 共通React UIコンポーネント
   eslint-config/     # 共通ESLint設定
   typescript-config/ # 共通TypeScript設定
+jupyter notebook/    # AI APIサーバーの処理用 jpynbファイルを格納
 ```
 
 ## はじめに
@@ -44,20 +48,14 @@ packages/
    - フロントエンド: [http://localhost:5173](http://localhost:5173)
    - バックエンド: [http://localhost:1000](http://localhost:1000)
 
+5. **AI APIサーバーの起動:**
+
+   - Food Classification.jpynb を[Colab](https://colab.research.google.com/)にインポートして、ランタイムのタイプに T4 GPUを指定して実行する
+   - 注意事項：[Hugging Face](https://huggingface.co/) と [ngrok](https://ngrok.com/)のアカウントが必要になります。
+
+
 
 ## スクリプト
 
 - `npm run dev` — 全アプリを開発モードで起動
 - `npm run build` — 全アプリとパッケージをビルド
-- `npm run lint` — 全コードをLint
-- `npm run check-types` — 全コードの型チェック
-- `npm run format` — コードの自動整形を実行
-
-## カスタマイズ
-
-- `packages/ui`に新しいUIコンポーネントを追加
-  ```
-  turbo gen
-  ```
-- `apps/backend/src/routes`に新しいAPIルートを追加
-- `apps/frontend/src`に新しいページやコンポーネントを追加
