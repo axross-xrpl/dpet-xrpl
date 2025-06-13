@@ -5,7 +5,7 @@ import { HomePage } from "./pages/HomePage";
 import { AccountInfo } from "./pages/AccountInfoPage";
 import { NFTokenModifyPage } from "./pages/NFTokenModifyPage";
 import { XummContext } from "./contexts/XummContext";
-import dnftLogo from "./assets/dnft_icon.webp";
+import dnftLogo from "./assets/logo.jpg";
 import { Button } from "@repo/ui/button";
 import { Xumm } from "xumm";
 
@@ -68,7 +68,7 @@ function App() {
 
   // NFTリストを取得
   const fetchNftList = async (account: string) => {
-    console.log("aaaaa ", account);
+    console.log("acount ", account);
     if (!account) return;
     try {
       const response = await fetch(
@@ -133,8 +133,14 @@ function App() {
           <img
             src={dnftLogo}
             alt="Xumm Logo"
-            className="w-24 h-24 mb-6 rounded-3xl shadow-lg"
+            className="w-48 h-48 mb-6 rounded-3xl shadow-lg"
           />
+          <div className="text-red-500 text-lg text-center py-3">
+            ※Requires a XRPL Devnet account because of the prototype version.
+            <br />
+            (プロトタイプのためXRPLのDevnetアカウントが必要です)
+          </div>
+
           <Button
             onClick={handleSignIn}
             className="px-6 py-3 bg-yellow-400 text-white rounded font-semibold hover:bg-yellow-700 transition-colors duration-200 shadow"
@@ -182,18 +188,21 @@ function App() {
                   My Pets
                 </NavLink>
                 <NavLink
-                  to="/nft-modify"
+                  to="/dpet-purchase"
                   end
                   className={({ isActive }) =>
-                    `px-4 py-2 rounded transition-colors duration-200 font-semibold ${isActive
-                      ? "bg-yellow-700 text-white"
-                      : "text-yellow-700 hover:bg-yellow-200"
+                    `px-4 py-2 rounded transition-colors duration-200 font-semibold ${
+                      isActive
+                        ? "bg-yellow-700 text-white"
+                        : "text-yellow-700 hover:bg-yellow-200"
                     }`
                   }
                 >
-                  NFT Modify
+                  Get Pets
                 </NavLink>
-                <NavLink
+                {/*
+                  * For debug 
+                  <NavLink
                   to="/info"
                   end
                   className={({ isActive }) =>
@@ -205,7 +214,7 @@ function App() {
                   }
                 >
                   Account Info
-                </NavLink>
+                </NavLink> */}
               </div>
 
               <div className="flex items-center gap-2">
