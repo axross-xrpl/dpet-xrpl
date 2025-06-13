@@ -177,9 +177,12 @@ export function DpetPage() {
     setNftListText(null);
 
     // ペットNFTリストのペイロード読み込む
-    const petList = await loadNftList(nftList.pets);
-
-    setNftListText(JSON.stringify(petList));
+    if (nftList && "pets" in nftList && Array.isArray(nftList.pets)) {
+      const petList = await loadNftList(nftList.pets);
+      setNftListText(JSON.stringify(petList));
+    } else {
+      setError("No pet list available.");
+    }
   };
 
   return (
