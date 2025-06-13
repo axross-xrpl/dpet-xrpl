@@ -1,4 +1,4 @@
-import { ReactNode, MouseEventHandler } from "react";
+import type { ReactNode, MouseEventHandler } from "react";
 
 interface ButtonProps {
   children: ReactNode;
