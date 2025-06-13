@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
 import { DpetPage } from "@repo/frontend-dpet";
 import { HomePage } from "./pages/HomePage";
 import { AccountInfo } from "./pages/AccountInfoPage";
+import { NFTokenModifyPage } from "./pages/NFTokenModifyPage";
 import { XummContext } from "./contexts/XummContext";
 import dnftLogo from "./assets/logo.jpg";
 import { Button } from "@repo/ui/button";
@@ -236,6 +237,7 @@ function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/info" element={<AccountInfo />} />
                 <Route path="/dpet" element={<DpetPage />} />
+                <Route path="/nft-modify" element={<NFTokenModifyPage />} />
               </Routes>
             </main>
           </div>
