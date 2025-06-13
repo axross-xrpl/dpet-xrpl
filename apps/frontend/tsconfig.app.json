@@ -26,6 +26,8 @@
     /* Paths */
     "baseUrl": ".",
     "paths": {
+      "@repo/frontend": ["../frontend/src"],
+      "@repo/frontend/*": ["../frontend/src/*"],
       "@repo/frontend-dpet": ["../frontend-dpet/src"],
       "@repo/frontend-dpet/*": ["../frontend-dpet/src/*"]
     }
