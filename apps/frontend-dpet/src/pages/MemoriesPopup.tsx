@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 // import { Input } from "@repo/ui/input"; // Not used in this example
 // import { Button } from "@repo/ui/button";
 import { Popup } from "@repo/ui/popup";
 
-// Define the structure of the JSON data you expect from IPFS
+// Define the structure of the JSON data
 interface IpfsMemoryData {
     pet_name: string;
-    image: string; // This should be the direct image URL or another IPFS hash for the image
+    image: string; // Direct image URL or IPFS hash
     date: string;
     type: string; // "pet"
     pet_type: string;
@@ -15,10 +15,9 @@ interface IpfsMemoryData {
     food_image?: string; // Direct image URL or IPFS hash
     meal_date?: string;
     Impressions?: string;
-    // Add any other fields that might be in your IPFS JSON
 }
 
-// Define the structure for your local memory state
+// Define the structure for local memory state
 interface Memory {
     date: string;
     image: string;
@@ -31,16 +30,16 @@ interface Memory {
     Impressions?: string;
 }
 
-// Define the structure of the data you will pass in
+// Define the structure of the data will pass in
 interface ModifyListDataItem {
     NFTokenID: string;
     URIs: string[];
 }
 
 interface MemoriesPopupProps {
-    // NFTokenID is still useful for the title or if you decide to filter by it later
+    // NFTokenID is still useful for the title or if decide to filter by it later
     NFTokenID: string;
-    // This prop will hold the data you fetched elsewhere
+    // This prop will hold the data fetched elsewhere
     modifyListData: ModifyListDataItem[] | null;
     open: boolean; // Control opening from parent
     onClose: () => void; // Control closing from parent
@@ -49,13 +48,12 @@ interface MemoriesPopupProps {
 // Helper to convert IPFS URI to a gateway URL
 const ipfsGatewayUrl = (ipfsUri: string) => {
     if (ipfsUri && ipfsUri.startsWith("ipfs://")) {
-        // Replace with your preferred IPFS gateway
         return `https://gateway.pinata.cloud/ipfs/${ipfsUri.substring(7)}`;
     }
     return ipfsUri; // Return as is if not a standard IPFS URI
 };
 
-export function MemoriesPopup({ NFTokenID, modifyListData, open, onClose }: MemoriesPopupProps) {
+const MemoriesPopupComponent: React.FC<MemoriesPopupProps> = ({ NFTokenID, modifyListData, open, onClose }) => {
     const [memories, setMemories] = useState<Memory[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -145,7 +143,7 @@ export function MemoriesPopup({ NFTokenID, modifyListData, open, onClose }: Memo
             }
             onClose={onClose} // Controlled by parent
         >
-            <div className="rounded-xl p-4 max-h-[70vh] overflow-y-auto bg-[#fffbe8]">
+            <div className="rounded-xl p-8 max-h-[70vh] overflow-y-auto bg-[#fffbe8]">
                 {isLoading && <p className="text-center">Loading memories...</p>}
                 {error && <p className="text-center text-red-500">Error: {error}</p>}
                 {!isLoading && !error && memories.length === 0 && (
@@ -155,17 +153,17 @@ export function MemoriesPopup({ NFTokenID, modifyListData, open, onClose }: Memo
                     <div key={idx} className="mb-8 last:mb-0">
                         {idx === 0 && (
                             <>
-                                <div className="font-bold text-xl mb-2 text-left">{memory.date}</div>
+                                {/* <div className="font-bold text-xl mb-2 text-left">{memory.date}</div> */}
                                 <img
                                     src={memory.image}
                                     alt={memory.pet_name}
                                     className="w-48 h-48 object-cover rounded-xl mx-auto mb-2"
                                     onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/192x192?text=Image+Error')}
                                 />
-                                <div className="text-center font-semibold">{memory.pet_name}</div>
-                                <div className="text-center text-sm text-gray-700 mb-2">
+                                <div className="py-2 text-center font-semibold">{memory.pet_name}</div>
+                                {/* <div className="text-center text-sm text-gray-700 mb-2">
                                     {memory.pet_type} / {memory.generations}
-                                </div>
+                                </div> */}
                                 <hr className="my-6 border-t-8 border-yellow-400" />
                             </>
                         )}
@@ -176,16 +174,15 @@ export function MemoriesPopup({ NFTokenID, modifyListData, open, onClose }: Memo
                                     <img
                                         src={memory.food_image}
                                         alt={memory.food_name}
-                                        className="w-48 h-48 object-cover rounded-lg mx-auto my-2"
+                                        className="w-48 object-cover rounded-lg mx-auto my-2"
                                         onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/128x128?text=Food+Img+Error')}
                                     />
                                 )}
-                                <div className="text-center font-semibold">{memory.food_name}</div>
-                                <br />
+                                <div className="text-left font-semibold mb-1">{memory.food_name}</div>
                                 <div className="text-center text-sm text-gray-700 mb-2">{memory.Impressions}</div>
                             </div>
                         )}
-                        {idx !== memories.length - 1 && (
+                        {idx !== memories.length-1 && (
                             <hr className="my-6 border-t-8 border-yellow-400" />
                         )}
                     </div>
@@ -194,3 +191,8 @@ export function MemoriesPopup({ NFTokenID, modifyListData, open, onClose }: Memo
         </Popup>
     );
 }
+
+export const MemoriesPopup = memo(MemoriesPopupComponent, (prevProps, nextProps) => {
+    // Only re-render if open state or NFTokenID changes
+    return prevProps.open === nextProps.open && prevProps.NFTokenID === nextProps.NFTokenID;
+});

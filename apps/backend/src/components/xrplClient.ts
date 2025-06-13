@@ -193,7 +193,7 @@ export async function getNFTokenModifyTransactions(address: string) {
         account: address,
         ledger_index_min: -1,
         ledger_index_max: -1,
-        forward: false,
+        forward: true, 
         marker: marker,
       });
 
@@ -208,40 +208,71 @@ export async function getNFTokenModifyTransactions(address: string) {
       throw new Error(`No transactions found for account: ${address}`);
     }
 
-    // Filter transactions to include only NFTokenModify transactions
-    const nftModifyTransactions = allTransactions.filter(
-      (tx: any) => tx.tx_json?.TransactionType === "NFTokenModify"
-    );
-    
-    if (nftModifyTransactions.length === 0) {
-      // No NFTokenModify transactions found after fetching all transactions
-      throw new Error(`No NFTokenModify transactions found for account: ${address}`);
-    }
+    // Store URI history for each token
+    // Key: NFTokenID, Value: { mintUri?: string, modifyUrisChronological: string[] }
+    const tokenUriData: Record<string, { mintUri?: string, modifyUrisChronological: string[] }> = {};
 
-    // Group URIs by NFTokenID
-    const groupedByTokenId: Record<string, string[]> = {};
+    for (const tx of allTransactions) {
+      const transactionDetails = tx.tx_json;
+      const meta = tx.meta; // Metadata from the transaction
 
-    nftModifyTransactions.forEach((tx: any) => {
-      const transactionDetails = tx.tx_json; 
-      if (!transactionDetails || !transactionDetails.NFTokenID) {
-        return; 
+      if (!transactionDetails || !meta) {
+        continue; // Skip if essential parts are missing
       }
-      const nftokenId = transactionDetails.NFTokenID;
-      const uri = transactionDetails.URI ? xrpl.convertHexToString(transactionDetails.URI) : undefined; // Decode URI
 
-      if (uri) {
-        if (!groupedByTokenId[nftokenId]) {
-          groupedByTokenId[nftokenId] = [];
+      if (transactionDetails.TransactionType === "NFTokenMint") {
+        const nftokenId = typeof meta === 'object' && meta !== null && 'nftoken_id' in meta ? meta.nftoken_id as string : undefined;
+        const uri = transactionDetails.URI ? xrpl.convertHexToString(transactionDetails.URI) : undefined;
+
+        if (nftokenId && uri) {
+          if (!tokenUriData[nftokenId]) {
+            tokenUriData[nftokenId] = { modifyUrisChronological: [] };
+          }
+          // Set mintUri only once (the first one encountered, which is the actual mint)
+          if (!tokenUriData[nftokenId].mintUri) {
+            tokenUriData[nftokenId].mintUri = uri;
+          }
         }
-        groupedByTokenId[nftokenId].push(uri);
-      }
-    });
+      } else if (transactionDetails.TransactionType === "NFTokenModify") {
+        const nftokenId = transactionDetails.NFTokenID; // NFTokenID is directly in tx_json for modify
+        const uri = transactionDetails.URI ? xrpl.convertHexToString(transactionDetails.URI) : undefined;
 
-    // Convert the grouped object into the desired array format
-    const formattedTransactions = Object.keys(groupedByTokenId).map(nftokenId => ({
-      NFTokenID: nftokenId,
-      URIs: groupedByTokenId[nftokenId],
-    }));
+        if (nftokenId && uri) {
+          if (!tokenUriData[nftokenId]) {
+            // Initialize the tokenUriData entry if it doesn't exist
+            tokenUriData[nftokenId] = { modifyUrisChronological: [] };
+          }
+          tokenUriData[nftokenId].modifyUrisChronological.push(uri);
+        }
+      }
+    }
+    // Format the transactions to include NFTokenID and URIs
+    const formattedTransactions = Object.keys(tokenUriData).map(nftokenId => {
+      const data = tokenUriData[nftokenId];
+      const finalUris: string[] = [];
+
+      if (data && data.mintUri) {
+        finalUris.push(data.mintUri);
+      }
+
+      if (data && data.modifyUrisChronological) {
+        data.modifyUrisChronological.forEach(modUri => {
+          // Add modify URI if it's different from the last URI added to finalUris
+          if (finalUris.length === 0 || finalUris[finalUris.length - 1] !== modUri) {
+            finalUris.push(modUri);
+          }
+        });
+      }
+      
+      return {
+        NFTokenID: nftokenId,
+        URIs: finalUris,
+      };
+    }).filter(item => item.URIs.length > 0); // Only include items that have at least one URI
+
+    if (formattedTransactions.length === 0) {
+        console.warn(`No NFTokenMint or NFTokenModify transactions with URIs found for account: ${address}`);
+    }
 
     return formattedTransactions;
   
