@@ -38,9 +38,7 @@ export function HomePage() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [name, setName] = useState('');
   const [avatarType, setAvatarType] = useState<'A' | 'B'>('A');
-  const [nftList, setNftList] = useState<any[]>([]);
   const [oldAvatarPayload, setOldAvatarPayload] = useState<any | null>(null);
-  const [latestAvatarTokenId, setLatestAvatarTokenId] = useState<string | null>(null);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [recentMeals, setRecentMeals] = useState<any[]>([]);
@@ -114,7 +112,6 @@ export function HomePage() {
       });
       const responseJson = await response.json();
       const accountNfts = responseJson.result.account_nfts;
-      setNftList(accountNfts);
 
       // avatarでフィルタリング
       const avatarNfts = [];
@@ -164,7 +161,6 @@ export function HomePage() {
 
       // oldPayload + userInfo にセット
       setOldAvatarPayload(latestAvatar.payload);
-      setLatestAvatarTokenId(latestAvatar.NFTokenID);
 
       setUserInfo({
         name: latestAvatar.payload.user_name,
@@ -704,7 +700,6 @@ export function HomePage() {
       }
 
       console.log("NFT List:", nftListTmp);
-      setNftList(nftListTmp);
 
       const eatTimeList = nftListTmp.map((nft: any) => nft.payload.eat_time).filter((eatTime) => eatTime !== undefined && eatTime !== null);
 
@@ -959,6 +954,7 @@ export function HomePage() {
 
                 <label className="flex flex-col items-center gap-1">
                   <input
+                    disabled
                     type="radio"
                     name="avatar"
                     value="B"
