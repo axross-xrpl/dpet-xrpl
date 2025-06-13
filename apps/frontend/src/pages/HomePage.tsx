@@ -43,6 +43,7 @@ export function HomePage() {
   const [latestAvatarTokenId, setLatestAvatarTokenId] = useState<string | null>(null);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
+  const [recentMeals, setRecentMeals] = useState<any[]>([]);
   // アバタータイプと体型に対応する画像URLのマッピング
   const avatarImageMap: Record<'A' | 'B', Record<BodyType, string>> = {
     A: {
@@ -283,7 +284,6 @@ export function HomePage() {
         date: formattedDate,
         type: 'avatar',
         body_type: 'average',
-        // eat_time: eatTime
       };
       console.log(`ミント時のメタデータ： ${metadata}`)
 
@@ -706,6 +706,18 @@ export function HomePage() {
       console.log("NFT List:", nftListTmp);
       setNftList(nftListTmp);
 
+      const eatTimeList = nftListTmp.map((nft: any) => nft.payload.eat_time).filter((eatTime) => eatTime !== undefined && eatTime !== null);
+
+      // 最新の順に並び変える
+      eatTimeList.sort((a, b) => {
+        const dataA = new Date(a.date).getTime();
+        const dataB = new Date(b.date).getTime();
+        return dataB - dataA;
+      });
+
+      // 直近5件のみグラフ表示
+      setRecentMeals(eatTimeList.slice(0, 5));
+
       // 比較表示をONにする
       setShowCompare(true);
     } catch (error) {
@@ -802,9 +814,31 @@ export function HomePage() {
               </div>
 
               {/* 右エリア */}
-              <div className="flex-1 flex items-center justify-center">
+              <div className="flex-1 flex flex-col items-center justify-center p-4">
                 {/* グラフ */}
-                <img src="/src/assets/graph-placeholder.png" alt="Graph Placeholder" className="w-auto h-50" />
+                <h3 className="text-lg font-bold mb-2">Recent Meals</h3>
+                {recentMeals.length === 0 ? (
+                  <p className="text-gray-600">No meal data available.</p>
+                ) : (
+                  <table className="w-full text-sm border border-gray-300">
+                    <thead>
+                      <tr className="bg-blue-500">
+                        <th className="border border-gray-300 px-2 py-1">Date</th>
+                        <th className="border border-gray-300 px-2 py-1">Meal</th>
+                        <th className="border border-gray-300 px-2 py-1">Calories</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentMeals.map((meal, index) => (
+                        <tr key={index} className="text-center">
+                          <td className="border border-gray-300 px-2 py-1">{meal.date}</td>
+                          <td className="border border-gray-300 px-2 py-1">{meal.name}</td>
+                          <td className="border border-gray-300 px-2 py-1">{meal.calories}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
             
