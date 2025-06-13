@@ -1,5 +1,4 @@
 import { useXumm } from "../contexts/XummContext";
-import type { NftListItem } from "../contexts/XummContext";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
 import { useState, useEffect } from "react";
@@ -38,8 +37,6 @@ export function HomePage() {
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [recentMeals, setRecentMeals] = useState<any[]>([]);
-  const [nftListText, setNftListText] = useState<string | null>(null);
-  const [petNftList, setPetNftList] = useState<any[]>([]);
 
   // アバター画像マッピング
   const avatarImageMap: Record<'A' | 'B', Record<BodyType, string>> = {
@@ -64,6 +61,29 @@ export function HomePage() {
   // バックエンドAPIのURL
   const API_URL = import.meta.env.VITE_BACKEND_URL!;
 
+  // dPets 仮データ
+  const dPets = [
+    { 
+      pet_name: 'ポチ', 
+      image: '/src/assets/pets/dog001.jpg', // IPFS URL:'https://ipfs.io/ipfs/Qmxxxxxx1'
+      date: '2025-06-10',
+      type: 'pet',
+      pet_type: 'dog001',
+      generations: 'gen1',
+      tokenId: 'TOKEN_ID_1',  
+    },
+    { 
+      pet_name: 'もんた', 
+      image: '/src/assets/pets/monkey001.jpg', // IPFS URL:'https://ipfs.io/ipfs/Qmxxxxxx2'
+      date: '2025-06-10',
+      type: 'pet',
+      pet_type: 'monkey001',
+      generations: 'gen1',
+      tokenId: 'TOKEN_ID_2', 
+       
+    },
+  ];
+
   /**
    * 最新NFT情報を取得する
    * ユーザーのアカウントに紐づくNFTの中から、最新のアバターNFTを検索し、userInfoなどの状態を更新
@@ -75,43 +95,35 @@ export function HomePage() {
       setIsLoadingAvatar(true);
       console.log("Fetching NFT List for account:", account);
 
-      // nftListからavatarsを取り出す
-      const avatars = ('avatars' in nftList) ? nftList.avatars as NftListItem[] : [];
+      if (nftList && "avatars" in nftList && nftList.avatars.length > 0) {
+        const latestAvatarNft = nftList.avatars[0];
+        const { NFTokenID, URI } = latestAvatarNft;
 
-      if (avatars) {
-        const latestAvatarNft = avatars[0];
-        console.log("Latest Avatat NFT List:", latestAvatarNft);
+        const uriString = xrpl.convertHexToString(URI);
+        const cid = uriString.replace("ipfs://", "");
+        const responseUrl = await fetch(`${API_URL}/api/ipfs/geturlfromcid/${cid}`);
+        const jsonUrl = await responseUrl.json();
 
-        if (latestAvatarNft) {
-          const { NFTokenID, URI } = latestAvatarNft;
+        const responsePayload = await fetch(jsonUrl.url);
+        const payload = await responsePayload.json();
 
-          const uriString = xrpl.convertHexToString(URI);
-          const cid = uriString.replace("ipfs://", "");
-          const responseUrl = await fetch(`${API_URL}/api/ipfs/geturlfromcid/${cid}`);
-          const jsonUrl = await responseUrl.json();
+        setOldAvatarPayload(payload);
 
-          const responsePayload = await fetch(jsonUrl.url);
-          const payload = await responsePayload.json();
+        setUserInfo({
+          name: payload.user_name,
+          avatar: payload.avatarType,
+          tokenId: NFTokenID,
+          body_type: payload.body_type,
+          image: payload.image,
+        });
 
-          setOldAvatarPayload(payload);
-
-          setUserInfo({
-            name: payload.user_name,
-            avatar: payload.avatarType,
-            tokenId: NFTokenID,
-            body_type: payload.body_type,
-            image: payload.image,
-          });
-
-          if (payload.eat_time) {
-            setRecentMeals([payload.eat_time]);
-          } else {
-            setRecentMeals([]);
-          }
-
-          console.log("Latest avatar NFT payload updated.");
+        if (payload.eat_time) {
+          setRecentMeals([payload.eat_time]);
+        } else {
+          setRecentMeals([]);
         }
-        
+
+        console.log("Latest avatar NFT payload updated.");
       } else {
         console.log("No avatar NFTs found in Context nftList.");
         setUserInfo(null);
@@ -155,7 +167,7 @@ export function HomePage() {
   }, [nftList]);
 
   /**
-   * NFTミント処理
+   * [owner] NFTミント処理
    * @param userName ユーザーが入力した名前
    * @param avatar 選択したアバタータイプ（'A' または 'B'）
    */
@@ -397,13 +409,11 @@ export function HomePage() {
       setMintStatus("Error minting NFT.");
       setShowQr(false);
       console.error("Error minting NFT:", error);
-    } finally {
-      setIsLoadingAvatar(false);
     }
   };
 
   /**
-   * NFTのメタデータを更新する
+   * [owner] NFTのメタデータを更新する
    * @param newMealDescription 食事内容
    * @param newCalories カロリー
    * @param selectedMealTime 食事時間（日付と時刻）
@@ -584,25 +594,50 @@ export function HomePage() {
   };
 
   /**
-   * NFTリストを読み込む
-   * @param list 
-   * @returns アバターNFTリスト
+   * NFTリストを取得
+   * @returns 
    */
-  const loadNftList = async (list: object[]) => {
-    const response = await fetch(`${API_URL}/api/xrpl/nfts/load`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ nftList: list }),
+  const getNftList = async () => {
+    if (!account) {
+      console.error("Account is not available.");
+      return;
+    }
+
+    const response = await fetch(`${API_URL}/api/xrpl/nfts/${account}`, {
+      method: "GET",
     });
 
     if (!response.ok) {
-      throw new Error("Failed to lost NFT list to backend");
+      throw new Error("Failed to get NFT list from backend");
     }
 
     const responseJson = await response.json();
-    return responseJson;
+    return responseJson.result.account_nfts;
+  };
+
+  /**
+   * NFTのペイロードを取得
+   * @param cid 
+   * @returns 
+   */
+  const getNftPayload = async (cid: string) => {
+    const responseUrl = await fetch(`${API_URL}/api/ipfs/geturlfromcid/${cid}`, {
+      method: "GET",
+    });
+
+    if (!responseUrl.ok) {
+      throw new Error("Failed to get URL from CID to backend");
+    }
+
+    const json = await responseUrl.json();
+    const url = json.url;
+
+    const responsePayload = await fetch(url);
+    if (!responsePayload.ok) {
+      throw new Error("Failed to get payload");
+    }
+
+    return await responsePayload.json();
   };
 
   /**
@@ -611,39 +646,46 @@ export function HomePage() {
   const handleGetNftListClick = async () => {
     try {
       console.log("Getting NFT list...");
+      const accountNftList = await getNftList();
 
-      setNftListText(null);
+      const nftListTmp: object[] = [];
+      for (const accountNft of accountNftList) {
+        const uriHex = accountNft.URI;
+        if (uriHex === undefined) {
+          continue;
+        }
 
-      // アバターNFTリストのペイロードを読み込む
-      if (nftList && "avatars" in nftList && Array.isArray(nftList.avatars)) {
-        const avatarList = await loadNftList(nftList.avatars);
-        setNftListText(JSON.stringify(avatarList));
-        console.log("アバターNFTリストのペイロード:", nftListText);
+        const uri = xrpl.convertHexToString(uriHex);
+        const cid = uri.replace("ipfs://", "");
+        const payload = await getNftPayload(cid);
 
-        const eatTimeList = avatarList.map((nft: any) => nft.payload.eat_time).filter((eatTime: any) => eatTime !== undefined && eatTime !== null);
+        if (payload.type !== "avatar") {
+          continue;
+        }
 
-        // 最新の順に並び変える
-        eatTimeList.sort((a, b) => {
-          const dataA = new Date(a.date).getTime();
-          const dataB = new Date(b.date).getTime();
-          return dataB - dataA;
+        nftListTmp.push({
+          NFTokenID: accountNft.NFTokenID,
+          URI: uri,
+          payload,
         });
-
-        // 直近5件のみ表示
-        setRecentMeals(eatTimeList.slice(0, 5));
-
-        // 比較表示をONにする
-        setShowCompare(true);
-      } else {
-        console.log("No avatar list available.");
       }
 
-      // ペットNFTリストのペイロードを読み込む
-      if ("pets" in nftList && Array.isArray(nftList.pets)) {
-        const petList = await loadNftList(nftList.pets);
-        setPetNftList(petList);
-      }
+      console.log("NFT List:", nftListTmp);
 
+      const eatTimeList = nftListTmp.map((nft: any) => nft.payload.eat_time).filter((eatTime) => eatTime !== undefined && eatTime !== null);
+
+      // 最新の順に並び変える
+      eatTimeList.sort((a, b) => {
+        const dataA = new Date(a.date).getTime();
+        const dataB = new Date(b.date).getTime();
+        return dataB - dataA;
+      });
+
+      // 直近5件のみグラフ表示
+      setRecentMeals(eatTimeList.slice(0, 5));
+
+      // 比較表示をONにする
+      setShowCompare(true);
     } catch (error) {
       console.error("Error getting NFT list:", error);
     }
@@ -807,38 +849,29 @@ export function HomePage() {
             <hr className="border-t border-yellow-100 mb-6 w-full" />
 
             {/* dPets */}
-            {petNftList.length === 0 ? (
-              <p className="text-gray-600">No dPets available.</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-6">
-                {petNftList.map((pet, index) => (
-                  <div key={index} className="flex flex-col items-center bg-white p-4 rounded-lg shadow-md">
-                    <img 
-                      src={`https://gateway.pinata.cloud/ipfs/${pet.payload.image}`}
-                      alt={pet.payload.pet_name}
-                      className="w-40 h-40 object-cover rounded-lg shadow"
+            <div className="grid grid-cols-2 gap-6">
+              {dPets.map((pet, index) => (
+                <div key={index} className="flex flex-col items-center bg-white p-4 rounded-lg shadow-md">
+                  <img src={pet.image} alt={pet.pet_name} className="w-40 h-40 object-cover rounded-lg shadow" />
+                  <p className="mt-2 text-lg font-bold">{pet.pet_name}</p>
+                  <p className="text-sm text-gray-600">Type: {pet.pet_type}</p>
+                  <p className="text-sm text-gray-600">Generation: {pet.generations}</p>
+                  <a
+                    href={`https://dev.bithomp.com/en/nft/${pet.tokenId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-700 underline text-sm flex items-center gap-1"
+                  >
+                    NFT details
+                    <img
+                      src="/src/assets/icons/125_arr_hoso.svg"
+                      alt="open in new tab"
+                      className="w-4 h-4"
                     />
-                    <p className="mt-2 text-lg font-bold">{pet.payload.pet_name}</p>
-                    <p className="text-sm text-gray-600">Type: {pet.payload.pet_type}</p>
-                    <p className="text-sm text-gray-600">Generation: {pet.payload.generations}</p>
-                    <a
-                      href={`https://dev.bithomp.com/en/nft/${pet.NFTokenID}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-700 underline text-sm flex items-center gap-1"
-                    >
-                      NFT details
-                      <img
-                        src="/src/assets/icons/125_arr_hoso.svg"
-                        alt="open in new tab"
-                        className="w-4 h-4"
-                      />
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
-            
+                  </a>
+                </div>
+              ))}
+            </div>
 
             <div className="flex justify-center mt-4">
               {/* ごはんボタン */}
@@ -914,8 +947,6 @@ export function HomePage() {
               onClick={() => {
                 handleMintNft(name, avatarType);
                 setShowPopup(false);
-                // ローディング表示開始
-                setIsLoadingAvatar(true);
               }}
             >
               Mint
