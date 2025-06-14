@@ -416,22 +416,24 @@ export function DpetPage() {
       {offerId && <div>offerId: {offerId}</div>}
 
       {/* NFT一覧取得 */}
-      {<Button
+      <Button
         onClick={handleGetListClick}
         className="px-4 py-2 bg-yellow-700 text-white rounded font-semibold hover:bg-yellow-600 transition-colors duration-200 shadow"
       >
         NFT一覧を取得
       </Button>
       {petNftListText && (
+      <>
         <div>
           <p>Pet NFT List</p>
           <div>{petNftListText}</div>
         </div>
 
-      <div className="mt-4">
-        <NFTList nfts={nftItems} />
-      </div>
-
+        <div className="mt-4">
+          <NFTList nfts={nftItems} />
+        </div>
+      </>
+      )}
       {selectedMemoryNft && (
         <MemoriesPopup
           NFTokenID={selectedMemoryNft.id}
