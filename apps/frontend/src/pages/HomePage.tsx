@@ -814,7 +814,7 @@ export function HomePage() {
                 {petNftList.map((pet, index) => (
                   <div key={index} className="flex flex-col items-center bg-white p-4 rounded-lg shadow-md">
                     <img 
-                      src={`https://gateway.pinata.cloud/ipfs/${pet.payload.image}`}
+                      src={`https://gateway.pinata.cloud/ipfs/${pet.payload.image.replace('ipfs://', '')}`}
                       alt={pet.payload.pet_name}
                       className="w-40 h-40 object-cover rounded-lg shadow"
                     />
