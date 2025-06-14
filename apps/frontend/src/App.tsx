@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
-import { DpetPage } from "@repo/frontend-dpet";
+import { DpetPage, DpetPurchasePage } from "@repo/frontend-dpet";
 import { HomePage } from "./pages/HomePage";
 import { AccountInfo } from "./pages/AccountInfoPage";
 import { NFTokenModifyPage } from "./pages/NFTokenModifyPage";
@@ -138,7 +138,8 @@ function App() {
           <div className="text-red-500 text-lg text-center py-3">
             ※Requires a XRPL Devnet account because of the prototype version.
             <br />
-            (プロトタイプのためXRPLのDevnetアカウントが必要です)
+            (プロトタイプのためXRPLのDevnetアカウントが必要です。
+            また、一部の機能でXRPLのシークレット入力が必要です。)
           </div>
 
           <Button
@@ -237,6 +238,7 @@ function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/info" element={<AccountInfo />} />
                 <Route path="/dpet" element={<DpetPage />} />
+                <Route path="/dpet-purchase" element={<DpetPurchasePage />} />
                 <Route path="/nft-modify" element={<NFTokenModifyPage />} />
               </Routes>
             </main>

@@ -1,14 +1,18 @@
 import * as xrpl from "xrpl";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@repo/ui/input";
 import { Button } from "@repo/ui/button";
 import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
 import { useXumm } from "@repo/frontend/contexts/XummContext";
+import NFTList, { type NFTItem } from "@repo/ui/nftlist";
+import { MemoriesPopup } from "./MemoriesPopup";
+import { LoadingOverlay } from "@repo/ui/loadingOverlay";
+
 
 export function DpetPage() {
   const { xumm, nftList, fetchNftList } = useXumm();
   const account = xumm.state.account;
-
+  const [nftItems, setNftItems] = useState<NFTItem[]>([]);
   const [ipfsUrl, setIpfsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -16,9 +20,96 @@ export function DpetPage() {
   const [petName, setPetName] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [offerId, setOfferId] = useState<string | null>(null);
+
   const [petNftList, setPetNftList] = useState<object[] | null>(null);
   const [petNftListText, setPetNftListText] = useState<string | null>(null);
   const [nftModifyText, setNftModifyText] = useState<string | null>(null);
+
+  const [nftListText, setNftListText] = useState<string | null>(null);
+  const [selectedMemoryNft, setSelectedMemoryNft] = useState<NFTItem | null>(null);
+  const [modifyListData, setModifyListData] = useState<any>(null);
+  const [memoriesPopupOpen, setMemoriesPopupOpen] = useState(false);
+  const [loadingNfts, setLoadingNfts] = useState(false);
+
+  useEffect(() => {
+    async function buildNftItems() {
+      if (!nftListText) {
+        setNftItems([]);
+        return;
+      }
+      let pets: any[] = [];
+      try {
+        const parsed = JSON.parse(nftListText);
+        pets = Array.isArray(parsed) ? parsed : parsed.pets || [];
+      } catch {
+        setNftItems([]);
+        return;
+      }
+      const items: NFTItem[] = pets.map((pet) => {
+        const meta = pet.payload;
+        console.log("Pet Metadata:", meta);
+        return {
+          id: pet.NFTokenID,
+          name: meta.pet_name || pet.NFTokenID,
+          image: meta.image
+            ? meta.image.replace("ipfs://", "http://gateway.pinata.cloud/ipfs/")
+            : "",
+          detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
+          onMealTime: () => alert(`Meal Time for ${meta.pet_name}`),
+          onMemory: () => setSelectedMemoryNft({
+            id: pet.NFTokenID,
+            name: meta.pet_name || pet.NFTokenID,
+            image: meta.image
+              ? meta.image.replace("ipfs://", "http://gateway.pinata.cloud/ipfs/")
+              : "",
+            detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
+          })
+        };
+      });
+      setNftItems(items);
+      setMemoriesPopupOpen(true);
+      console.log("NFT Items:", items);
+    }
+
+    async function fetchAndSetNftList() {
+      setLoadingNfts(true);
+      if (nftList && "pets" in nftList && Array.isArray(nftList.pets)) {
+        try {
+          const petList = await loadNftList(nftList.pets);
+          setNftListText(JSON.stringify(petList));
+        } catch (err: any) {
+          setError(err.message || "Failed to load NFT list.");
+        } finally {
+          setLoadingNfts(false);
+        }
+      } else {
+        setError("No pet list available.");
+      }
+    }
+
+    async function fetchModifyListData() {
+    if (!account) return;
+    setLoadingNfts(true);
+    try {
+      const res = await fetch(`${API_URL}/api/xrpl/modifylist/${account}`);
+      if (res.ok) {
+        const data = await res.json();
+        setModifyListData(data);
+      } else {
+        setModifyListData(null);
+      }
+    } catch (err) {
+      setModifyListData(null);
+    } finally {
+      setLoadingNfts(false);
+    }
+  }
+
+    fetchModifyListData();
+    fetchAndSetNftList();
+    buildNftItems();
+    console.log("NFT modify list data:", modifyListData);
+  }, [nftListText, nftList, account]);
 
   const API_URL = import.meta.env.VITE_BACKEND_URL!;
 
@@ -257,9 +348,24 @@ export function DpetPage() {
     }
   };
 
+  // const handleGetListClick = async () => {
+  //   setNftListText(null);
+
+  //   // ペットNFTリストのペイロード読み込む
+  //   if (nftList && "pets" in nftList && Array.isArray(nftList.pets)) {
+  //     const petList = await loadNftList(nftList.pets);
+  //     setNftListText(JSON.stringify(petList));
+  //   } else {
+  //     setError("No pet list available.");
+  //   }
+  // };
+
+  console.log("nftitems:", nftItems);
+
   return (
     <div>
       {/* TODO ペット画像を表示する */}
+      {loadingNfts && <LoadingOverlay message="Loading NFTs..." />}
       <h2>DPet Page (IPFS Upload via Backend)</h2>
       <div className="p-2">
         <span>File: </span>
@@ -295,9 +401,9 @@ export function DpetPage() {
             href={
               ipfsUrl.startsWith("ipfs://")
                 ? ipfsUrl.replace(
-                    "ipfs://",
-                    "https://gateway.pinata.cloud/ipfs/"
-                  )
+                  "ipfs://",
+                  "https://gateway.pinata.cloud/ipfs/"
+                )
                 : ipfsUrl
             }
             target="_blank"
@@ -310,7 +416,7 @@ export function DpetPage() {
       {offerId && <div>offerId: {offerId}</div>}
 
       {/* NFT一覧取得 */}
-      <Button
+      {<Button
         onClick={handleGetListClick}
         className="px-4 py-2 bg-yellow-700 text-white rounded font-semibold hover:bg-yellow-600 transition-colors duration-200 shadow"
       >
@@ -321,6 +427,18 @@ export function DpetPage() {
           <p>Pet NFT List</p>
           <div>{petNftListText}</div>
         </div>
+
+      <div className="mt-4">
+        <NFTList nfts={nftItems} />
+      </div>
+
+      {selectedMemoryNft && (
+        <MemoriesPopup
+          NFTokenID={selectedMemoryNft.id}
+          onClose={() => setSelectedMemoryNft(null)}
+          open={memoriesPopupOpen}
+          modifyListData={modifyListData}
+        />
       )}
 
       {/* NFT更新 */}
