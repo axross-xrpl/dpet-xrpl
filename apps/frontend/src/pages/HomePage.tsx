@@ -2,7 +2,7 @@ import { useXumm } from "../contexts/XummContext";
 import type { NftListItem } from "../contexts/XummContext";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
 import { stringToHex } from "@repo/utils/stringToHex"; 
 import * as xrpl from "xrpl";
@@ -16,7 +16,41 @@ type UserInfo = {
   avatar: 'A' | 'B';
   tokenId: string;
   body_type: BodyType;
-  image: string; // アバター画像のIPFS URL
+  image: string;
+};
+// 型定義（アバターNFTペイロード）
+type AvatarNftPayload = {
+  user_name: string;
+  avatarType: 'A' | 'B';
+  body_type: 'thin' | 'average' | 'fat';
+  image: string;
+  date?: string;
+  type?: string;
+  eat_time?: {
+    name: string;
+    date: string;
+    calories: number;
+  };
+};
+// 型定義（Meals）
+type EatTime = {
+  name: string;
+  date: string;
+  calories: number;
+};
+// 型定義（ペットNFTペイロード）
+type PetNftPayload = {
+  pet_name: string;
+  image: string;
+  date: string;
+  type: "pet";
+  pet_type: string;
+  generations: string;
+};
+// 型定義（ペットNFT）
+type PetNftItem = {
+  NFTokenID: string;
+  payload: PetNftPayload;
 };
 
 export function HomePage() {
@@ -34,12 +68,12 @@ export function HomePage() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [name, setName] = useState('');
   const [avatarType, setAvatarType] = useState<'A' | 'B'>('A');
-  const [oldAvatarPayload, setOldAvatarPayload] = useState<any | null>(null);
+  const [oldAvatarPayload, setOldAvatarPayload] = useState<AvatarNftPayload | null>(null);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
-  const [recentMeals, setRecentMeals] = useState<any[]>([]);
+  const [recentMeals, setRecentMeals] = useState<EatTime[]>([]);
   const [nftListText, setNftListText] = useState<string | null>(null);
-  const [petNftList, setPetNftList] = useState<any[]>([]);
+  const [petNftList, setPetNftList] = useState<PetNftItem[]>([]);
 
   // アバター画像マッピング
   const avatarImageMap: Record<'A' | 'B', Record<BodyType, string>> = {
@@ -69,7 +103,7 @@ export function HomePage() {
    * ユーザーのアカウントに紐づくNFTの中から、最新のアバターNFTを検索し、userInfoなどの状態を更新
    * @returns 
    */
-  const fetchAndSetLatestAvatar = async () => {
+  const fetchAndSetLatestAvatar = useCallback(async () => {
     try {
       // ローディング表示開始
       setIsLoadingAvatar(true);
@@ -78,15 +112,15 @@ export function HomePage() {
       // nftListからavatarsを取り出す
       const avatars = ('avatars' in nftList) ? nftList.avatars as NftListItem[] : [];
 
-      if (avatars) {
+      if (avatars.length > 0) {
         const latestAvatarNft = avatars[0];
         console.log("Latest Avatat NFT List:", latestAvatarNft);
 
         if (latestAvatarNft) {
           const { NFTokenID, URI } = latestAvatarNft;
-
           const uriString = xrpl.convertHexToString(URI);
           const cid = uriString.replace("ipfs://", "");
+
           const responseUrl = await fetch(`${API_URL}/api/ipfs/geturlfromcid/${cid}`);
           const jsonUrl = await responseUrl.json();
 
@@ -103,12 +137,7 @@ export function HomePage() {
             image: payload.image,
           });
 
-          if (payload.eat_time) {
-            setRecentMeals([payload.eat_time]);
-          } else {
-            setRecentMeals([]);
-          }
-
+          setRecentMeals(payload.eat_time ? [payload.eat_time] : []);
           console.log("Latest avatar NFT payload updated.");
         }
         
@@ -124,7 +153,7 @@ export function HomePage() {
     } finally {
       setIsLoadingAvatar(false);
     }
-  };
+  }, [account, nftList, API_URL]);
 
   /**
    * 体型レベル判定ロジック
@@ -149,10 +178,10 @@ export function HomePage() {
     return bodyTypeLevels[level] as BodyType;
   };
 
-  // useEffectで Context.nftList が更新されたら Avatarを再取得
+  // useEffectでnftListが更新されたらAvatarを再取得
   useEffect(() => {
     fetchAndSetLatestAvatar();
-  }, [nftList]);
+  }, [fetchAndSetLatestAvatar]);
 
   /**
    * NFTミント処理
@@ -167,10 +196,10 @@ export function HomePage() {
 
       console.log("Minting for:", userName, avatar);
     
-      // NFTミント処理の現在のステータス表示をリセット
+      // ステータス表示をリセット
       setMintStatus(null);
 
-      // 名前とアバターを選択するポップアップを表示
+      // ポップアップを表示
       setShowPopup(true);
 
       // ---------------------------------------
@@ -623,7 +652,7 @@ export function HomePage() {
         const eatTimeList = avatarList.map((nft: any) => nft.payload.eat_time).filter((eatTime: any) => eatTime !== undefined && eatTime !== null);
 
         // 最新の順に並び変える
-        eatTimeList.sort((a, b) => {
+        eatTimeList.sort((a: any, b: any) => {
           const dataA = new Date(a.date).getTime();
           const dataB = new Date(b.date).getTime();
           return dataB - dataA;
@@ -941,8 +970,8 @@ export function HomePage() {
               What did you eat?
               <Input
                 type="text"
-                value={mealDescription} // mealDescription は食事内容を保持するState
-                onChange={(e) => setMealDescription(e.target.value)} // setMealDescription はState更新関数
+                value={mealDescription}
+                onChange={(e) => setMealDescription(e.target.value)}
                 placeholder="e.g., Chicken salad, Pasta"
                 className="mt-1 w-full p-2 border border-gray-300 rounded"
               />
@@ -953,21 +982,20 @@ export function HomePage() {
               Calories
               <Input
                 type="number"
-                value={calories} // calories はカロリーを保持するState
+                value={calories}
                 onChange={(e) => {
                   const value = e.target.value;
                   if (value === '') {
-                    setCalories(''); // 空文字列の場合はそのままStateを更新
+                    setCalories('');
                   } else {
                     const parsedValue = parseInt(value, 10);
                     if (!isNaN(parsedValue)) { // 数値に変換できたか確認
                       setCalories(parsedValue); // 数値に変換してStateを更新
                     } else {
-                      // 例: 無効な入力があった場合の処理 (エラー表示など)
-                      setCalories(''); // またはエラー状態に
+                      setCalories('');
                     }
                   }
-                }} // setCalories はState更新関数
+                }}
                 placeholder="e.g., 500"
                 className="mt-1 w-full p-2 border border-gray-300 rounded"
               />
@@ -983,7 +1011,7 @@ export function HomePage() {
                     name="mealTime"
                     value="Breakfast"
                     checked={mealTime === 'Breakfast'}
-                    onChange={() => setMealTime('Breakfast')} // setMealTime は食事時間を保持するState更新関数
+                    onChange={() => setMealTime('Breakfast')}
                   />
                   <span>Breakfast</span>
                 </label>
