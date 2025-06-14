@@ -126,7 +126,7 @@ function App() {
   };
 
   return (
-    <XummContext.Provider value={{ xumm, isLoggedIn, nftList }}>
+    <XummContext.Provider value={{ xumm, isLoggedIn, nftList, fetchNftList }}>
       {!isLoggedIn ? (
         // Show login page or prompt
         <div className="flex flex-col items-center justify-center min-h-screen bg-yellow-50 border-8 border-yellow-100">
