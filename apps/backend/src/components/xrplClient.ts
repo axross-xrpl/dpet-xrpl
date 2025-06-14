@@ -140,7 +140,7 @@ export async function createNft(
     return response;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to create Pet NFT: ${errorMessage}`);
+    throw new Error(`Failed to create NFT: ${errorMessage}`);
   } finally {
     await client.disconnect();
   }
