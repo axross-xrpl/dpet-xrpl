@@ -5,6 +5,7 @@ export interface NFTItem {
   name: string;
   image: string;
   detailsUrl: string;
+  meta: object;
   onMealTime?: () => void;
   onMemory?: () => void;
 }
