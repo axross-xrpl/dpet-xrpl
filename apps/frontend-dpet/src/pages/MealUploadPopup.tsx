@@ -106,12 +106,28 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
     try {
       const response = await analyzeImageWithAI(selectedFile);
       console.log("AI response:", response);
+      let aiResult = response;
 
-      if (!response.ok) throw new Error("AI analysis failed.");
-
-      const aiResult = await response.json();
+      if (aiResult && typeof aiResult.result === "string") {
+            // Parse the JSON string
+            aiResult = JSON.parse(aiResult.result);
+        }
+        console.log("Parsed AI result:", aiResult); 
       setMealAnalysis(aiResult); // Use the result from backend
       setStep(2);
+
+    // --- Use dummy AI analysis output here ---
+    // const aiResult = {
+    //   "Category": "Alcohol/Beverage",
+    //   "Calory": "100",
+    //   "Energy type": "DYNAMISM",
+    //   "Food name": "Ramen",
+    //   "Impressions": "It was very good ramen! It's my favorite!"
+    // };
+    // setMealAnalysis(aiResult);
+    // setStep(2);
+    // --- End of dummy output ---
+
     } catch (err: any) {
       setError(`AI analysis failed. ${err.message || "Unknown error"}`);
     } finally {
@@ -241,9 +257,11 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
               <img
                 src={URL.createObjectURL(selectedFile)}
                 alt="Preview"
-                className="w-40 h-40 object-cover rounded mb-3 border-2 border-yellow-300"
+                className="w-40 h-40 object-cover rounded mb-3 border-2 border-yellow-300 my-2"
               />
             )}
+            <hr className="my-6 border-t-8 border-yellow-400" />
+            <div className="text-sm mb-2">AIによる解析処理の所要時間: 2~3分</div>
             <Button
               onClick={handleNext}
               disabled={uploading || !selectedFile}
@@ -259,8 +277,12 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
         {step === 2 && mealAnalysis && (
           <div className="w-full flex flex-col items-center">
             <div className="font-bold mb-2">Confirm Meal Details</div>
+            <div>Detected Menu: {mealAnalysis.result["Food name"]}</div>
+            <div>Total Estimated Calories: {mealAnalysis.result["Calory"]} kcal</div>
+         {/*
             <div>Detected Menu: {mealAnalysis["Food name"]}</div>
             <div>Total Estimated Calories: {mealAnalysis.Calory} kcal</div>
+          */}
             {selectedFile && (
               <img
                 src={URL.createObjectURL(selectedFile)}
@@ -268,9 +290,13 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
                 className="w-40 h-40 object-cover rounded mb-3 border-2 border-yellow-300"
               />
             )}
+            <div className="mb-2">Energy: {mealAnalysis.result["Energy"]}</div>
+            <div className="mb-2">Energy Type: {mealAnalysis.result["Energy type"]}</div>
+        {/*
             <div className="mb-2">
               Energy Type: {mealAnalysis["Energy type"]}
             </div>
+         */}            
             <input
               type="text"
               className="mb-2 border rounded px-2 py-1 w-full"

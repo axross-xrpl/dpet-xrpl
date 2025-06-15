@@ -46,9 +46,9 @@ export function DpetPage() {
               name: meta.pet_name || pet.NFTokenID,
               image: meta.image
                 ? meta.image.replace(
-                    "ipfs://",
-                    "http://gateway.pinata.cloud/ipfs/"
-                  )
+                  "ipfs://",
+                  "http://gateway.pinata.cloud/ipfs/"
+                )
                 : "",
               detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
               meta,
@@ -61,9 +61,9 @@ export function DpetPage() {
               name: meta.pet_name || pet.NFTokenID,
               image: meta.image
                 ? meta.image.replace(
-                    "ipfs://",
-                    "http://gateway.pinata.cloud/ipfs/"
-                  )
+                  "ipfs://",
+                  "http://gateway.pinata.cloud/ipfs/"
+                )
                 : "",
               detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
               meta,
@@ -73,22 +73,6 @@ export function DpetPage() {
       setNftItems(items);
       setMemoriesPopupOpen(true);
       console.log("NFT Items:", items);
-    }
-
-    async function fetchAndSetNftList() {
-      setLoadingNfts(true);
-      if (nftList && "pets" in nftList && Array.isArray(nftList.pets)) {
-        try {
-          const petList = await loadNftList(nftList.pets);
-          setPetNftList(petList);
-        } catch (err: any) {
-          setError(err.message || "Failed to load NFT list.");
-        } finally {
-          setLoadingNfts(false);
-        }
-      } else {
-        setError("No pet list available.");
-      }
     }
 
     async function fetchModifyListData() {
@@ -134,6 +118,31 @@ export function DpetPage() {
     return responseJson;
   };
 
+  async function fetchAndSetNftList() {
+    setLoadingNfts(true);
+    if (nftList && "pets" in nftList && Array.isArray(nftList.pets)) {
+      try {
+        const petList = await loadNftList(nftList.pets);
+        setPetNftList(petList);
+      } catch (err: any) {
+        setError(err.message || "Failed to load NFT list.");
+      } finally {
+        setLoadingNfts(false);
+      }
+    } else {
+      setError("No pet list available.");
+    }
+  }
+
+  const handleMealPopupClose = async () => {
+    setSelectedMealNft(null);
+    setMealPopupOpen(false);
+    // Reload NFT list
+    await fetchAndSetNftList();
+  };
+
+  console.log("nftitems:", nftItems);
+
   return (
     <div>
       {loadingNfts && <LoadingOverlay message="Loading NFTs..." />}
@@ -155,7 +164,7 @@ export function DpetPage() {
       {selectedMealNft && (
         <MealUploadPopup
           nft={selectedMealNft}
-          onClose={() => setSelectedMealNft(null)}
+          onClose={handleMealPopupClose}
           open={mealPopupOpen}
           account={account}
         />
