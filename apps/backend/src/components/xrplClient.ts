@@ -178,6 +178,47 @@ export async function acceptSellOffer(
   }
 }
 
+// NFTを更新
+export async function modifyNft(
+  tokenid: string,
+  address: string,
+  jsonUrl: string
+): Promise<any> {
+
+  const client = createClient();
+  await client.connect();
+  try {
+    // system account
+    const wallet = xrpl.Wallet.fromSecret(process.env.SYSTEM_SECRET as string);
+
+    // const wallet = xrpl.Wallet.fromSecret(secret);
+    console.log(address)
+    console.log(wallet.address)
+
+    const response = await client.submitAndWait(
+      {
+        TransactionType: "NFTokenModify",
+        Account: wallet.address,
+        Owner: address,
+        // Account: address,
+        URI: xrpl.convertStringToHex(jsonUrl),
+        NFTokenID: tokenid,
+      },
+      {
+        wallet,
+      }
+    );
+    console.log("NFTokenModify:", response);
+    return response;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to Modify NFT: ${errorMessage}`);
+  } finally {
+    await client.disconnect();
+  }
+}
+
+
 // Retrieves NFTokenModify transactions
 export async function getNFTokenModifyTransactions(address: string) {
   const client = createClient();

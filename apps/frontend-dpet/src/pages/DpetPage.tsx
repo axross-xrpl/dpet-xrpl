@@ -4,11 +4,13 @@ import NFTList, { type NFTItem } from "@repo/ui/nftlist";
 import { LoadingOverlay } from "@repo/ui/loadingOverlay";
 import { MemoriesPopup } from "./MemoriesPopup";
 import { MealUploadPopup } from "./MealUploadPopup";
+import { Button } from "@repo/ui/button";
+
 
 export function DpetPage() {
   const { xumm, nftList } = useXumm();
   const account = xumm.state.account;
-
+  
   const [nftItems, setNftItems] = useState<NFTItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [petNftList, setPetNftList] = useState<object[] | null>(null);
@@ -22,6 +24,7 @@ export function DpetPage() {
   const [selectedMealNft, setSelectedMealNft] = useState<NFTItem | null>(null);
 
   useEffect(() => {
+    // TODO 画面リフレッシュ処理
     async function buildNftItems() {
       if (!petNftList) {
         setNftItems([]);
@@ -93,11 +96,86 @@ export function DpetPage() {
       }
     }
 
-    fetchModifyListData();
-    fetchAndSetNftList();
-    buildNftItems();
+    // fetchModifyListData();
+    // fetchAndSetNftList();
+    // buildNftItems();
     console.log("NFT modify list data:", modifyListData);
+
   }, [petNftList, nftList, account]);
+
+    async function buildNftItems() {
+
+      console.log("buildNftItems");
+
+      if (!petNftList) {
+        setNftItems([]);
+        return;
+      }
+      let pets: any[] = petNftList;
+      const items: NFTItem[] = pets.map((pet) => {
+        const meta = pet.payload;
+        console.log("Pet Metadata:", meta);
+        return {
+          //add pet types and gen
+          id: pet.NFTokenID,
+          name: meta.pet_name || pet.NFTokenID,
+          image: meta.image
+            ? meta.image.replace("ipfs://", "http://gateway.pinata.cloud/ipfs/")
+            : "",
+          detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
+          meta,
+          onMealTime: () => {
+            setSelectedMealNft({
+              id: pet.NFTokenID,
+              name: meta.pet_name || pet.NFTokenID,
+              image: meta.image
+                ? meta.image.replace(
+                  "ipfs://",
+                  "http://gateway.pinata.cloud/ipfs/"
+                )
+                : "",
+              detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
+              meta,
+            });
+            setMealPopupOpen(true);
+          },
+          onMemory: () =>
+            setSelectedMemoryNft({
+              id: pet.NFTokenID,
+              name: meta.pet_name || pet.NFTokenID,
+              image: meta.image
+                ? meta.image.replace(
+                  "ipfs://",
+                  "http://gateway.pinata.cloud/ipfs/"
+                )
+                : "",
+              detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
+              meta,
+            }),
+        };
+      });
+      setNftItems(items);
+      setMemoriesPopupOpen(true);
+      console.log("NFT Items:", items);
+    }
+
+    async function fetchModifyListData() {
+      if (!account) return;
+      setLoadingNfts(true);
+      try {
+        const res = await fetch(`${API_URL}/api/xrpl/modifylist/${account}`);
+        if (res.ok) {
+          const data = await res.json();
+          setModifyListData(data);
+        } else {
+          setModifyListData(null);
+        }
+      } catch (err) {
+        setModifyListData(null);
+      } finally {
+        setLoadingNfts(false);
+      }
+    }
 
   const API_URL = import.meta.env.VITE_BACKEND_URL!;
 
@@ -141,11 +219,32 @@ export function DpetPage() {
     await fetchAndSetNftList();
   };
 
-  console.log("nftitems:", nftItems);
+  
+  const handleReload = async () => {
+    await fetchModifyListData();
+    await fetchAndSetNftList();
+    await buildNftItems();
+  };
+  
+  // console.log("nftitems:", nftItems);
 
   return (
     <div>
       {loadingNfts && <LoadingOverlay message="Loading NFTs..." />}
+
+      <div>
+            {/* リロードボタン(Debug用) */}
+            <Button
+              className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded font-semibold"
+              onClick={() => {
+                handleReload();
+              }}
+            >
+              Reload
+            </Button>
+        </div>
+
+
 
       {/* ペットNFT一覧 */}
       {nftItems && (

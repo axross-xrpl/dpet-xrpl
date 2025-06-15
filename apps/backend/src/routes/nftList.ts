@@ -14,6 +14,7 @@ router.get("/:address", async (req, res) => {
     const pets: object[] = [];
 
     for (const nft of nfts) {
+
       const { NFTokenID, URI } = nft;
       if (URI === undefined) {
         return;
@@ -22,7 +23,13 @@ router.get("/:address", async (req, res) => {
       // URIからペイロードを取得
       const uri = xrpl.convertHexToString(URI);
       const cid = uri.replace("ipfs://", "");
-      const url = await getUrl(cid, pinataJwt);
+      // const url = await getUrl(cid, pinataJwt);
+
+      const url = "https://ipfs.io/ipfs/" + cid;
+
+      console.log("url")
+      console.log(url)
+
       const response = await fetch(url);
       const payload = await response.json();
 
@@ -78,7 +85,10 @@ router.post("/load", async (req, res) => {
       // URIからペイロードを取得
       const uri = xrpl.convertHexToString(URI);
       const cid = uri.replace("ipfs://", "");
-      const url = await getUrl(cid, pinataJwt);
+      // const url = await getUrl(cid, pinataJwt);
+
+      const url = "https://ipfs.io/ipfs/" + cid;
+
       const response = await fetch(url);
       if (response.status !== 200) {
         throw new Error(`fetch error: status ${response.status}`);

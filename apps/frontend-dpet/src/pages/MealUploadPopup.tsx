@@ -30,8 +30,8 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
   const [secret, setSecret] = useState<string>("");
   const [growImage, setGrowImage] = useState<string | null>(null);
 
-  console.log("MealUploadPopup rendered with NFT:", nft);
-  console.log("Account:", account);
+  // console.log("MealUploadPopup rendered with NFT:", nft);
+  // console.log("Account:", account);
 
   // 画像をアップロード
   const uploadImage = async (file: File | null) => {
@@ -55,7 +55,7 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
     return data.ipfsUrl;
   };
 
-  // JSONをアップロード
+    // JSONをアップロード
   const uploadJson = async (jsonData: Object) => {
     // ファイルをIPFSへアップロードする
     const response = await fetch(
@@ -76,6 +76,37 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
     const data = await response.json();
     return data.cid;
   };
+
+
+  // NFT更新
+  const modifyNft = async (tokenid: string, account: string, jsonCid: string) => {
+
+    const request = {
+      tokenid: tokenid,
+      address: account,
+      jsonUrl: `ipfs://${jsonCid}`,
+    };
+    const API_URL = import.meta.env.VITE_BACKEND_URL!;
+
+    const response = await fetch(`${API_URL}/api/pet/modify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to modify NFT to backend");
+    }
+
+    const data = await response.json();
+    console.log("data")
+    console.log(data)
+
+    return data.tokenid;
+  };
+
 
   // Reset state when popup opens
   useEffect(() => {
@@ -137,10 +168,10 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
 
   // Step 2: Confirm & Update backend
   const handleUpdate = async () => {
-    if (!secret) {
-      setError("Please enter your XRPL Secret.");
-      return;
-    }
+    // if (!secret) {
+    //   setError("Please enter your XRPL Secret.");
+    //   return;
+    // }
     setUploading(true);
     setError(null);
     try {
@@ -191,17 +222,20 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
       // JSONデータをアップロード
       const jsonCid = await uploadJson(nextJsonData);
 
-      const modifyPayload: any = createNFTokenModifyPayload({
-        Account: account,
-        NFTokenID: nft.id,
-        URI: xrpl.convertStringToHex(`ipfs://${jsonCid}`),
-      });
-      console.log("Modify Payload:", modifyPayload);
+      modifyNft(nft.id, account, jsonCid);
 
-      const response = await xumm.payload?.create(modifyPayload);
-      if (!response) {
-        throw new Error("Failed to create payload.");
-      }
+      // const modifyPayload: any = createNFTokenModifyPayload({
+      //   Account: account,
+      //   NFTokenID: nft.id,
+      //   URI: xrpl.convertStringToHex(`ipfs://${jsonCid}`),
+      // });
+
+      // console.log("Modify Payload:", modifyPayload);
+
+      // const response = await xumm.payload?.create(modifyPayload);
+      // if (!response) {
+      //   throw new Error("Failed to create payload.");
+      // }
 
       // 成長後の画像をセット
       setGrowImage(
@@ -261,7 +295,7 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
               />
             )}
             <hr className="my-6 border-t-8 border-yellow-400" />
-            <div className="text-sm mb-2">AIによる解析処理の所要時間: 2~3分</div>
+            <div className="text-sm mb-2">AIによる解析処理の所要時間: およそ2~5分</div>
             <Button
               onClick={handleNext}
               disabled={uploading || !selectedFile}
@@ -296,15 +330,16 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
             <div className="mb-2">
               Energy Type: {mealAnalysis["Energy type"]}
             </div>
-         */}            
-            <input
+         */}
+
+            {/* <input
               type="text"
               className="mb-2 border rounded px-2 py-1 w-full"
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
               placeholder="Your XRPL Secret (on Devnet)"
               disabled={uploading}
-            />
+            /> */}
             <Button
               onClick={handleUpdate}
               disabled={uploading || !secret}

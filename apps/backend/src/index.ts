@@ -13,6 +13,7 @@ import getNftokenModifyTransactions from "./routes/getNftokenModifyTransactions"
 import createAvatarRoute from "./routes/createAvatar";
 
 import createPet from "./routes/createPet";
+import modifyPet from "./routes/modifyPet";
 import acceptSellOffer from "./routes/acceptSellOffer";
 
 dotenv.config();
@@ -42,6 +43,7 @@ app.use("/api/avatar/create", createAvatarRoute);
 
 // pet
 app.use("/api/pet/create", createPet);
+app.use("/api/pet/modify", modifyPet);
 app.use("/api/pet/acceptSellOffer", acceptSellOffer);
 
 app.listen(port, () => {
