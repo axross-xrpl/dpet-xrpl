@@ -6,6 +6,7 @@ import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
 import { useXumm } from "@repo/frontend/contexts/XummContext";
 import NFTList, { type NFTItem } from "@repo/ui/nftlist";
 import { MemoriesPopup } from "./MemoriesPopup";
+import { MealUploadPopup } from "./MealUploadPopup";
 import { LoadingOverlay } from "@repo/ui/loadingOverlay";
 
 
@@ -30,6 +31,8 @@ export function DpetPage() {
   const [modifyListData, setModifyListData] = useState<any>(null);
   const [memoriesPopupOpen, setMemoriesPopupOpen] = useState(false);
   const [loadingNfts, setLoadingNfts] = useState(false);
+  const [mealPopupOpen, setMealPopupOpen] = useState(false);
+  const [selectedMealNft, setSelectedMealNft] = useState<NFTItem | null>(null);
 
   useEffect(() => {
     async function buildNftItems() {
@@ -49,13 +52,24 @@ export function DpetPage() {
         const meta = pet.payload;
         console.log("Pet Metadata:", meta);
         return {
+          //add pet types and gen
           id: pet.NFTokenID,
           name: meta.pet_name || pet.NFTokenID,
           image: meta.image
             ? meta.image.replace("ipfs://", "http://gateway.pinata.cloud/ipfs/")
             : "",
           detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
-          onMealTime: () => alert(`Meal Time for ${meta.pet_name}`),
+          onMealTime: () => {
+            setSelectedMealNft({
+              id: pet.NFTokenID,
+              name: meta.pet_name || pet.NFTokenID,
+              image: meta.image
+                ? meta.image.replace("ipfs://", "http://gateway.pinata.cloud/ipfs/")
+                : "",
+              detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
+            });
+            setMealPopupOpen(true);
+          },
           onMemory: () => setSelectedMemoryNft({
             id: pet.NFTokenID,
             name: meta.pet_name || pet.NFTokenID,
@@ -88,22 +102,22 @@ export function DpetPage() {
     }
 
     async function fetchModifyListData() {
-    if (!account) return;
-    setLoadingNfts(true);
-    try {
-      const res = await fetch(`${API_URL}/api/xrpl/modifylist/${account}`);
-      if (res.ok) {
-        const data = await res.json();
-        setModifyListData(data);
-      } else {
+      if (!account) return;
+      setLoadingNfts(true);
+      try {
+        const res = await fetch(`${API_URL}/api/xrpl/modifylist/${account}`);
+        if (res.ok) {
+          const data = await res.json();
+          setModifyListData(data);
+        } else {
+          setModifyListData(null);
+        }
+      } catch (err) {
         setModifyListData(null);
+      } finally {
+        setLoadingNfts(false);
       }
-    } catch (err) {
-      setModifyListData(null);
-    } finally {
-      setLoadingNfts(false);
     }
-  }
 
     fetchModifyListData();
     fetchAndSetNftList();
@@ -440,6 +454,14 @@ export function DpetPage() {
           onClose={() => setSelectedMemoryNft(null)}
           open={memoriesPopupOpen}
           modifyListData={modifyListData}
+        />
+      )}
+      {selectedMealNft && (
+        <MealUploadPopup
+          nft={selectedMealNft}
+          onClose={() => setSelectedMealNft(null)}
+          open={mealPopupOpen}
+          account={account}
         />
       )}
 
