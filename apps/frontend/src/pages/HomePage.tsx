@@ -5,6 +5,7 @@ import { Input } from "@repo/ui/input";
 import { useState, useEffect } from "react";
 import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
 import { stringToHex } from "@repo/utils/stringToHex"; 
+import { getFormattedDate } from "@repo/utils/getFormattedDate";
 import * as xrpl from "xrpl";
 import { LoadingOverlay } from "@repo/ui/loadingOverlay";
 
@@ -212,29 +213,16 @@ export function HomePage() {
       // ---------------------------------------
       console.log("Uploading NFT metadata to IPFS...");
 
-      // 現在の日付と時刻を取得
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0'); // 月は0から始まるため+1
-      const day = String(now.getDate()).padStart(2, '0');
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
-      // const formattedDate = now.toISOString().replace('T', ':').substring(0, 19);
-
-      // dateフォーマット 'YYYY-MM-DD:HH:MM:SS'
-      const formattedDate = `${year}-${month}-${day}:${hours}:${minutes}:${seconds}`;
-
       // NFTのメタデータを作成
       const metadata = {
         user_name: userName,
         image:ipfsUrl,
         avatarType: avatar,
-        date: formattedDate,
+        date: getFormattedDate(new Date()),
         type: 'avatar',
         body_type: 'average',
       };
-      console.log(`ミント時のメタデータ： ${metadata}`)
+      console.log(`ミント時のメタデータ： ${metadata}`);
 
       // メタデータJSONをIPFSへアップロード
       const uploadJsonResponse = await fetch(`${API_URL}/api/avatar/create/upload-json`, {
@@ -409,23 +397,11 @@ export function HomePage() {
    * @param selectedMealTime 食事時間（日付と時刻）
    */
   const handleUpdateNftMetadata = async (newMealDescription: string, newCalories: number, selectedMealTime: 'Breakfast' | 'Lunch' | 'Dinner') => {
-    // 現在の日付と時刻を取得
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // 月は0から始まるため+1
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    // const formattedDate = now.toISOString().replace('T', ':').substring(0, 19);
-
-    // dateフォーマット 'YYYY-MM-DD:HH:MM:SS'
-    const formattedDate = `${year}-${month}-${day}:${hours}:${minutes}:${seconds}`;
     console.log(selectedMealTime);
 
     const updatedEatTime = {
       name: newMealDescription,
-      date: formattedDate, // 現在時刻と選択された食事時間を組み合わせる
+      date: getFormattedDate(new Date()),
       calories: newCalories,
     };
 
@@ -623,7 +599,7 @@ export function HomePage() {
         const eatTimeList = avatarList.map((nft: any) => nft.payload.eat_time).filter((eatTime: any) => eatTime !== undefined && eatTime !== null);
 
         // 最新の順に並び変える
-        eatTimeList.sort((a, b) => {
+        eatTimeList.sort((a: any, b: any) => {
           const dataA = new Date(a.date).getTime();
           const dataB = new Date(b.date).getTime();
           return dataB - dataA;

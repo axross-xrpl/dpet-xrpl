@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@repo/ui/button";
 import { Popup } from "@repo/ui/popup";
 import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
+import { getFormattedDate } from "@repo/utils/getFormattedDate";
 import { type PetData, PetDataList } from "@repo/frontend-dpet/petData";
 import { analyzeImageWithAI } from "@repo/utils/analyzeImage";
 
@@ -65,8 +66,7 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> =  ({
 
   let nextJsonData = {
     ...nft.meta,
-    // TODO フォーマット
-    date: new Date(),
+    date: getFormattedDate(new Date()),
   };
 
   const currentData = {
@@ -93,8 +93,7 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> =  ({
 
       nextJsonData = {
         ...nft.meta,
-        // TODO フォーマット
-        date: new Date(),
+        date: getFormattedDate(new Date()),
         image: imageUrl,
         pet_type: nextPetType,
         generations: nextPetInfo?.generations,
