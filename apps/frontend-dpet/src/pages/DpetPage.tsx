@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react";
 import { useXumm } from "@repo/frontend/contexts/XummContext";
 import NFTList, { type NFTItem } from "@repo/ui/nftlist";
+import { LoadingOverlay } from "@repo/ui/loadingOverlay";
 import { MemoriesPopup } from "./MemoriesPopup";
 import { MealUploadPopup } from "./MealUploadPopup";
-import { LoadingOverlay } from "@repo/ui/loadingOverlay";
 
 export function DpetPage() {
   const { xumm, nftList } = useXumm();
   const account = xumm.state.account;
+
   const [nftItems, setNftItems] = useState<NFTItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-
   const [petNftList, setPetNftList] = useState<object[] | null>(null);
-
   const [selectedMemoryNft, setSelectedMemoryNft] = useState<NFTItem | null>(
     null
   );
