@@ -714,13 +714,13 @@ export function HomePage() {
             </Button>
           </div>
 
-          {/* Your dPets セクション */}
-          <div className="bg-yellow-400 p-8 rounded-xl w-full max-w-5xl mx-auto mt-12 flex flex-col items-center">
+          {/* Your dPets セクション */}          
+          <div className="bg-yellow-400 p-8 rounded-xl w-full max-w-5xl mx-auto mt-12 flex flex-col items-center hidden">
             <h2 className="text-xl font-bold mb-2 self-start w-full">Your dPets</h2>
             <hr className="border-t border-yellow-100 mb-6 w-full" />
 
             {/* Get dPet */}
-            <div className="flex flex-col items-center gap-4 mt-8">
+            <div className="flex flex-col items-center gap-4 mt-8 ">
               <h3 className="text-xl font-bold text-center">Get Your dPet!</h3>
               <Button
                 className="px-8 py-2 bg-yellow-100 text-black text-lg font-semibold rounded-full shadow-lg hover:bg-yellow-600 transition duration-200"
@@ -817,8 +817,8 @@ export function HomePage() {
               </Button>
             </div>
 
-            <div className="flex justify-center mt-4">
-              {/* NFTリスト取得ボタン */}
+            <div className="flex justify-center mt-4 hidden">
+              {/* NFTリスト取得ボタン (For Debug)*/}
               <Button
                 className="self-center px-8 py-2 bg-green-400 text-black text-lg font-semibold rounded-full shadow-lg hover:bg-green-500 transition duration-200"
                 onClick={handleGetNftListClick}
@@ -840,7 +840,7 @@ export function HomePage() {
           </div>
 
           {/* Your dPets セクション */}
-          <div className="bg-yellow-400 p-8 rounded-xl w-full max-w-5xl mx-auto mt-12 flex flex-col items-center">
+          <div className="bg-yellow-400 p-8 rounded-xl w-full max-w-5xl mx-auto mt-12 flex flex-col items-center hidden">
             <h2 className="text-xl font-bold mb-2 self-start w-full">Your dPets</h2>
             <hr className="border-t border-yellow-100 mb-6 w-full" />
 
