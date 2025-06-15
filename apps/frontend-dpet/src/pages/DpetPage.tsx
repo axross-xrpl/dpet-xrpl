@@ -44,6 +44,7 @@ export function DpetPage() {
             ? meta.image.replace("ipfs://", "http://gateway.pinata.cloud/ipfs/")
             : "",
           detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
+          meta,
           onMealTime: () => {
             setSelectedMealNft({
               id: pet.NFTokenID,
@@ -55,6 +56,7 @@ export function DpetPage() {
                   )
                 : "",
               detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
+              meta,
             });
             setMealPopupOpen(true);
           },
@@ -69,6 +71,7 @@ export function DpetPage() {
                   )
                 : "",
               detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
+              meta,
             }),
         };
       });
