@@ -161,7 +161,7 @@ export function DpetPurchasePage() {
 
       <section>
         <div className="w-full p-10">
-          <h1 className="items-center justify-center p-4 text-xl font-bold text-center">Dynamic NFT Pets!</h1>
+          <h1 className="items-center justify-center p-4 text-2xl font-bold text-center">Dynamic NFT Pets!</h1>
           <div className="max-w-5xl mx-auto p-4">
             <div className="text-xl font-bold text-left">Get Your dPet!</div>
             <br/>
@@ -195,11 +195,11 @@ export function DpetPurchasePage() {
 
                 <div className="flex flex-col items-center">
                   <Button
-                    className="self-center px-8 py-2 bg-gray-400 text-black text-lg font-semibold rounded-full shadow-lg0"
+                    className="self-center px-8 py-2 bg-yellow-700 text-white text-lg font-semibold rounded-full shadow-lg0"
                     // onClick={() => setShowPopup(true)}
                     disabled
                   >
-                    Mint NFT
+                    Coming Soon
                   </Button>
                 </div>
               </div>
@@ -240,11 +240,11 @@ export function DpetPurchasePage() {
 
                 <div className="flex flex-col items-center">
                   <Button
-                    className="self-center px-8 py-2 bg-gray-400 text-black text-lg font-semibold rounded-full shadow-lg0"
+                    className="self-center px-8 py-2 bg-yellow-700 text-white text-lg font-semibold rounded-full shadow-lg0"
                     // onClick={() => setShowPopup(true)}
                     disabled={true}
                   >
-                    Mint NFT
+                    Coming Soon
                   </Button>
                 </div>
               </div>
@@ -255,7 +255,7 @@ export function DpetPurchasePage() {
             
 
       {/* for debug */}
-      {offerId && <div>offerId: {offerId}</div>}
+      {/* {offerId && <div>offerId: {offerId}</div>} */}
 
       </section>
 
@@ -263,6 +263,7 @@ export function DpetPurchasePage() {
 
       {/* ▼ Mintポップアップ */}
       {showPopup && (
+        
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-20 z-50">
           <div className="bg-yellow-100 p-6 rounded-xl shadow-lg w-96 flex flex-col gap-4">
             {/* Name */}
