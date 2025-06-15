@@ -8,6 +8,7 @@ import { stringToHex } from "@repo/utils/stringToHex";
 import { getFormattedDate } from "@repo/utils/getFormattedDate";
 import * as xrpl from "xrpl";
 import { LoadingOverlay } from "@repo/ui/loadingOverlay";
+import { NavLink } from "react-router-dom";
 
 // 型定義（体形）
 type BodyType = 'thin' | 'average' | 'fat';
@@ -27,11 +28,8 @@ type AvatarNftPayload = {
   image: string;
   date?: string;
   type?: string;
-  eat_time?: {
-    name: string;
-    date: string;
-    calories: number;
-  };
+  eat_time?: EatTime;
+  eat_times?: EatTime[];
 };
 // 型定義（Meals）
 type EatTime = {
@@ -130,16 +128,19 @@ export function HomePage() {
 
           setOldAvatarPayload(payload);
 
-          setUserInfo({
+          const latestUserInfo = {
             name: payload.user_name,
             avatar: payload.avatarType,
             tokenId: NFTokenID,
             body_type: payload.body_type,
             image: payload.image,
-          });
+          };
+          console.log("latestUserInfo:", latestUserInfo);
+          setUserInfo(latestUserInfo);
 
-          setRecentMeals(payload.eat_time ? [payload.eat_time] : []);
-          console.log("Latest avatar NFT payload updated.");
+          const meals = await extractRecentMeals(avatars, API_URL);
+          console.log("Recent Meals updated:", meals);
+          setRecentMeals(meals);          
         }
         
       } else {
@@ -155,6 +156,46 @@ export function HomePage() {
       setIsLoadingAvatar(false);
     }
   }, [account, nftList, API_URL]);
+
+  /**
+   * NFT一覧からeat_timeが含まれるものを抽出し、直近5件のみ返す
+   * @param avatars アバターNFT一覧
+   * @param apiUrl IPFS取得APIのURL
+   * @returns EatTime[]（最大5件）
+   */
+  const extractRecentMeals = async (avatars: NftListItem[], apiUrl: string) : Promise<EatTime[]> => {
+    const meals: EatTime[] = [];
+
+    for (const nft of avatars) {
+      try {
+        const uriString = xrpl.convertHexToString(nft.URI);
+        const cid = uriString.replace("ipfs://", "");
+
+        const resCid = await fetch(`${apiUrl}/api/ipfs/geturlfromcid/${cid}`);
+        const { url } = await resCid.json();
+
+        const resPayload = await fetch(url);
+        const payload = await resPayload.json();
+
+        console.log("CID:", cid);
+        console.log("payload", payload);
+        console.log("payload.eat_times", payload.eat_times);
+
+        if (Array.isArray(payload.eat_times)) {
+          const flattened = payload.eat_times.flat();
+          meals.push(...flattened);
+        } else if (payload.eat_time) {
+          meals.push(payload.eat_time);
+        }
+      } catch (error) {
+        console.warn("Skipping NFT due to error:", error);
+      }
+    }
+
+    meals.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    console.log("total meals:", meals.length);
+    return meals.slice(0, 5);
+  };
 
   /**
    * 体型レベル判定ロジック
@@ -428,11 +469,15 @@ export function HomePage() {
   const handleUpdateNftMetadata = async (newMealDescription: string, newCalories: number, selectedMealTime: 'Breakfast' | 'Lunch' | 'Dinner') => {
     console.log(selectedMealTime);
 
+    const previousMeals: EatTime[] = oldAvatarPayload?.eat_times ?? [];
     const updatedEatTime = {
       name: newMealDescription,
       date: getFormattedDate(new Date()),
       calories: newCalories,
     };
+
+    const flattenedPrevious = Array.isArray(previousMeals[0]) ? previousMeals.flat() : previousMeals;
+    const updatedEatTimes = [...flattenedPrevious, updatedEatTime];
 
     const currentBodyType = userInfo?.body_type;
     const currentImageIpfsUrl = userInfo?.image;
@@ -490,7 +535,7 @@ export function HomePage() {
       date: oldAvatarPayload?.date || '',
       type: 'avatar',
       body_type: newBodyType,
-      eat_time: updatedEatTime,
+      eat_times: updatedEatTimes,
     };
 
     const uploadJsonResponse = await fetch(`${API_URL}/api/avatar/create/upload-json`, {
@@ -623,19 +668,7 @@ export function HomePage() {
       if (nftList && "avatars" in nftList && Array.isArray(nftList.avatars)) {
         const avatarList = await loadNftList(nftList.avatars);
         setNftListText(JSON.stringify(avatarList));
-        console.log("アバターNFTリストのペイロード:", nftListText);
-
-        const eatTimeList = avatarList.map((nft: any) => nft.payload.eat_time).filter((eatTime: any) => eatTime !== undefined && eatTime !== null);
-
-        // 最新の順に並び変える
-        eatTimeList.sort((a: any, b: any) => {
-          const dataA = new Date(a.date).getTime();
-          const dataB = new Date(b.date).getTime();
-          return dataB - dataA;
-        });
-
-        // 直近5件のみ表示
-        setRecentMeals(eatTimeList.slice(0, 5));
+        console.log("Avatar NFT List Payload:", nftListText);
 
         // 比較表示をONにする
         setShowCompare(true);
@@ -847,14 +880,16 @@ export function HomePage() {
 
             <div className="flex justify-center mt-4">
               {/* ごはんボタン */}
-              <Button
-                className="self-center px-8 py-2 bg-yellow-100 text-black text-lg font-semibold rounded-full shadow-lg hover:bg-yellow-600 transition duration-200"
-                onClick={() => {
-                    console.log('Meal Time clicked');
-                  }}
-              >
-                Meal Time
-              </Button>
+              <NavLink to="/dpet">
+                <Button
+                  className="self-center px-8 py-2 bg-yellow-100 text-black text-lg font-semibold rounded-full shadow-lg hover:bg-yellow-600 transition duration-200"
+                  onClick={() => {
+                      console.log('Meal Time clicked');
+                    }}
+                >
+                  Meal Time
+                </Button>
+              </NavLink>
             </div>
           </div>
         </div>
