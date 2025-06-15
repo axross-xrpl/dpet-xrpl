@@ -85,9 +85,12 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
       const response = await analyzeImageWithAI(selectedFile);
       console.log("AI response:", response);
 
-      if (!response.ok) throw new Error("AI analysis failed.");
+      // TODO: analyzeImageWithAI の response が JSONなのでチェック処理を更新する
+      // if (!response.ok) throw new Error("AI analysis failed.");
+      // const aiResult = await response.json();
 
-      const aiResult = await response.json();
+      const aiResult = await response.result;
+
       setMealAnalysis(aiResult); // Use the result from backend
       setStep(2);
     } catch (err: any) {
@@ -221,6 +224,7 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
                 className="w-40 h-40 object-cover rounded mb-3 border-2 border-yellow-300"
               />
             )}
+            <div className="text-sm text-bold text-red-500 mb-2 py-2">※AIによる解析処理の所要時間: 2~5分</div>
             <Button
               onClick={handleNext}
               disabled={uploading || !selectedFile}
