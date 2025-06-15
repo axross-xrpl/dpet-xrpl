@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@repo/ui/button";
 import { Popup } from "@repo/ui/popup";
 import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
+import { type PetData, PetDataList } from "@repo/frontend-dpet/petData";
 
 interface MealUploadPopupProps {
   open: boolean;
@@ -26,16 +27,88 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = async ({
 
   console.log("MealUploadPopup rendered with NFT:", nft);
   console.log("Account:", account);
-  
+
+  // JSONをアップロード
+  const uploadJson = async (jsonData: Object) => {
+    // ファイルをIPFSへアップロードする
+    const response = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/api/ipfs/uploadjson`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ jsonData }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to upload jsonData to backend");
+    }
+
+    const data = await response.json();
+    return data.cid;
+  };
+
   // AI からデータを取得
-//   const aiData = await fetchAiData(selectedFile);
-//   setMealAnalysis(aiData);
+  // const aiData = await fetchAiData(selectedFile);
+  // TODO ダミーデータ利用中
+  const aiData = {
+    Category: "Alcohol/Beverage",
+    Calory: "100",
+    "Energy type": "DYNAMISM",
+    "Food name": "Ramen",
+    Impressions: "It was very good ramen! It's my favorite!",
+  };
+  // setMealAnalysis(aiData);
+
+  let nextJsonData = {
+    ...nft.meta,
+    // TODO フォーマット
+    date: new Date(),
+  };
+
+  const currentData = {
+    petType: nft.meta.petType,
+    generation: nft.meta.generations,
+  };
+  if (!currentData.generation) {
+    const currentPetInfo: PetData | undefined = PetDataList.find(
+      (item) => item.petType === currentData.petType
+    );
+    const energyType: string = aiData["Energy type"] || "DYNAMISM";
+
+    const nextPetType: string | undefined =
+      currentPetInfo?.nextGenerations.find(
+        (item) => item.energyType === energyType
+      )?.petType;
+    if (nextPetType) {
+      // 成長先のペット情報でペイロードを作成
+      // ペット情報を更新する
+      const nextPetInfo: PetData | undefined = PetDataList.find(
+        (item) => item.petType === nextPetType
+      );
+      const imageUrl = `ipfs://${nextPetInfo?.imageCid}`;
+
+      nextJsonData = {
+        ...nft.meta,
+        // TODO フォーマット
+        date: new Date(),
+        image: imageUrl,
+        pet_type: nextPetType,
+        generations: nextPetInfo?.generations,
+        food_name: aiData["Food name"],
+        impressions: aiData["Impressions"],
+      };
+    }
+  }
+  // JSONデータをアップロード
+  const jsonCid = await uploadJson(nextJsonData);
 
   const modifyPayload = createNFTokenModifyPayload({
     Account: account,
     NFTokenID: nft.id,
-
-    URI: "新しいURi",// ipfs uri 
+    URI: `ipfs://${jsonCid}`,
   });
   console.log("Modify Payload:", modifyPayload);
 
