@@ -1,7 +1,10 @@
+import * as xrpl from "xrpl";
 import React, { useState, useEffect } from "react";
 import { Button } from "@repo/ui/button";
 import { Popup } from "@repo/ui/popup";
+import { useXumm } from "@repo/frontend/contexts/XummContext";
 import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
+import { getFormattedDate } from "@repo/utils/getFormattedDate";
 import { type PetData, PetDataList } from "@repo/frontend-dpet/petData";
 import { analyzeImageWithAI } from "@repo/utils/analyzeImage";
 
@@ -12,12 +15,13 @@ interface MealUploadPopupProps {
   account: string;
 }
 
-export const MealUploadPopup: React.FC<MealUploadPopupProps> =  ({
+export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
   open,
   onClose,
   nft,
   account,
 }) => {
+  const { xumm, fetchNftList } = useXumm();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -51,68 +55,6 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> =  ({
     return data.cid;
   };
 
-  // AI からデータを取得
-  // const aiData = await fetchAiData(selectedFile);
-  // TODO ダミーデータ利用中
-  const aiData = {
-    Category: "Alcohol/Beverage",
-    Calory: "100",
-    "Energy type": "DYNAMISM",
-    "Food name": "Ramen",
-    Impressions: "It was very good ramen! It's my favorite!",
-  };
-  // setMealAnalysis(aiData);
-
-  let nextJsonData = {
-    ...nft.meta,
-    // TODO フォーマット
-    date: new Date(),
-  };
-
-  const currentData = {
-    petType: nft.meta.petType,
-    generation: nft.meta.generations,
-  };
-  if (!currentData.generation) {
-    const currentPetInfo: PetData | undefined = PetDataList.find(
-      (item) => item.petType === currentData.petType
-    );
-    const energyType: string = aiData["Energy type"] || "DYNAMISM";
-
-    const nextPetType: string | undefined =
-      currentPetInfo?.nextGenerations.find(
-        (item) => item.energyType === energyType
-      )?.petType;
-    if (nextPetType) {
-      // 成長先のペット情報でペイロードを作成
-      // ペット情報を更新する
-      const nextPetInfo: PetData | undefined = PetDataList.find(
-        (item) => item.petType === nextPetType
-      );
-      const imageUrl = `ipfs://${nextPetInfo?.imageCid}`;
-
-      nextJsonData = {
-        ...nft.meta,
-        // TODO フォーマット
-        date: new Date(),
-        image: imageUrl,
-        pet_type: nextPetType,
-        generations: nextPetInfo?.generations,
-        food_name: aiData["Food name"],
-        impressions: aiData["Impressions"],
-      };
-    }
-  }
-  // JSONデータをアップロード
-  const jsonCid = await uploadJson(nextJsonData);
-
-  const modifyPayload = createNFTokenModifyPayload({
-    Account: account,
-    NFTokenID: nft.id,
-    URI: `ipfs://${jsonCid}`,
-  });
-  console.log("Modify Payload:", modifyPayload);
-
   // Reset state when popup opens
   useEffect(() => {
     if (open) {
@@ -133,27 +75,27 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> =  ({
 
   // Step 1: Upload & AI analysis
   const handleNext = async () => {
-  if (!selectedFile) {
-    setError("Please select a file.");
-    return;
-  }
-  setUploading(true);
-  setError(null);
-  try {
-    const response = await analyzeImageWithAI(selectedFile);
-    console.log("AI response:", response);
+    if (!selectedFile) {
+      setError("Please select a file.");
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      const response = await analyzeImageWithAI(selectedFile);
+      console.log("AI response:", response);
 
-    if (!response.ok) throw new Error("AI analysis failed.");
+      if (!response.ok) throw new Error("AI analysis failed.");
 
-    const aiResult = await response.json();
-    setMealAnalysis(aiResult); // Use the result from backend
-    setStep(2);
-  } catch (err: any) {
-    setError(`AI analysis failed. ${err.message || "Unknown error"}`);
-  } finally {
-    setUploading(false);
-  }
-};
+      const aiResult = await response.json();
+      setMealAnalysis(aiResult); // Use the result from backend
+      setStep(2);
+    } catch (err: any) {
+      setError(`AI analysis failed. ${err.message || "Unknown error"}`);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Step 2: Confirm & Update backend
   const handleUpdate = async () => {
@@ -164,10 +106,77 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> =  ({
     setUploading(true);
     setError(null);
     try {
-      // Simulate backend update and getting grown image
-      // Replace with your actual backend call
-      await new Promise((res) => setTimeout(res, 1200));
-      setGrowImage("https://placehold.co/200x200/fire.png?text=Grown!"); 
+      // Update pet NFT payload and getting grown image
+      let nextJsonData = {
+        ...nft.meta,
+        date: getFormattedDate(new Date()),
+      };
+
+      const currentData = {
+        petType: nft.meta.petType,
+        generation: nft.meta.generations,
+      };
+      if (!currentData.generation) {
+        const currentPetInfo: PetData | undefined = PetDataList.find(
+          (item) => item.petType === currentData.petType
+        );
+        const analysisData: any = {
+          energyType: mealAnalysis["Energy type"] || "DYNAMISM",
+          foodName: mealAnalysis["Food name"],
+          impressions: mealAnalysis["Impressions"],
+        };
+
+        const nextPetType: string | undefined =
+          currentPetInfo?.nextGenerations.find(
+            (item) => item.energyType === analysisData.energyType
+          )?.petType;
+        if (nextPetType) {
+          // 成長先のペット情報でペイロードを作成
+          // ペット情報を更新する
+          const nextPetInfo: PetData | undefined = PetDataList.find(
+            (item) => item.petType === nextPetType
+          );
+          const imageUrl = `ipfs://${nextPetInfo?.imageCid}`;
+
+          nextJsonData = {
+            ...nft.meta,
+            date: getFormattedDate(new Date()),
+            image: imageUrl,
+            pet_type: nextPetType,
+            generations: nextPetInfo?.generations,
+            food_name: analysisData.foodName,
+            impressions: analysisData.impressions,
+          };
+        }
+      }
+      // JSONデータをアップロード
+      const jsonCid = await uploadJson(nextJsonData);
+
+      const modifyPayload: any = createNFTokenModifyPayload({
+        Account: account,
+        NFTokenID: nft.id,
+        URI: xrpl.convertStringToHex(`ipfs://${jsonCid}`),
+      });
+      console.log("Modify Payload:", modifyPayload);
+
+      const response = await xumm.payload?.create(modifyPayload);
+      if (!response) {
+        throw new Error("Failed to create payload.");
+      }
+
+      // 成長後の画像をセット
+      setGrowImage(
+        nextJsonData.image
+          ? nextJsonData.image.replace(
+              "ipfs://",
+              "http://gateway.pinata.cloud/ipfs/"
+            )
+          : ""
+      );
+
+      // NFTリストを更新
+      await fetchNftList(account);
+
       setStep(3);
     } catch (err: any) {
       setError("Backend update failed.");
@@ -242,7 +251,7 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> =  ({
               type="text"
               className="mb-2 border rounded px-2 py-1 w-full"
               value={secret}
-              onChange={e => setSecret(e.target.value)}
+              onChange={(e) => setSecret(e.target.value)}
               placeholder="Your XRPL Secret (on Devnet)"
               disabled={uploading}
             />

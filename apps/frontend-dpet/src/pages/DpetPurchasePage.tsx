@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@repo/ui/button";
 import { useXumm } from "@repo/frontend/contexts/XummContext";
 import { LoadingOverlay } from "@repo/ui/loadingOverlay";
-
+import { getFormattedDate } from "@repo/utils/getFormattedDate";
 
 export function DpetPurchasePage() {
   const { xumm } = useXumm();
@@ -128,7 +128,7 @@ export function DpetPurchasePage() {
       const jsonData = {
         pet_name: petName,
         image: imageUrl,
-        date: new Date(),
+        date: getFormattedDate(new Date()),
         type: "pet",
         pet_type: petType,
         generations: "gen1",
