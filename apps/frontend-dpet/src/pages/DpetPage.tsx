@@ -134,8 +134,6 @@ export function DpetPage() {
     return responseJson;
   };
 
-  console.log("nftitems:", nftItems);
-
   return (
     <div>
       {loadingNfts && <LoadingOverlay message="Loading NFTs..." />}

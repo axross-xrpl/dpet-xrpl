@@ -85,7 +85,6 @@ function App() {
         avatars: data.avatars ?? [],
         pets: data.pets ?? [],
       });
-      console.log("#### nftList:,", nftList);
     } catch (error) {
       console.error("Error fetching NFT list", error);
       setNftList({});
