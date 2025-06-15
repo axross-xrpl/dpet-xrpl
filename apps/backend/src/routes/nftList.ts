@@ -80,6 +80,9 @@ router.post("/load", async (req, res) => {
       const cid = uri.replace("ipfs://", "");
       const url = await getUrl(cid, pinataJwt);
       const response = await fetch(url);
+      if (response.status !== 200) {
+        throw new Error(`fetch error: status ${response.status}`);
+      }
       const payload = await response.json();
 
       const nftData = {

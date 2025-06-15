@@ -33,6 +33,28 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
   console.log("MealUploadPopup rendered with NFT:", nft);
   console.log("Account:", account);
 
+  // 画像をアップロード
+  const uploadImage = async (file: File | null) => {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/api/ipfs/uploadfile`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to upload file to backend");
+    }
+
+    const data = await response.json();
+    return data.ipfsUrl;
+  };
+
   // JSONをアップロード
   const uploadJson = async (jsonData: Object) => {
     // ファイルをIPFSへアップロードする
@@ -122,47 +144,48 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
     setUploading(true);
     setError(null);
     try {
-      // Update pet NFT payload and getting grown image
-      let nextJsonData = {
+      // meal情報を取得
+      const imageCid = await uploadImage(selectedFile);
+      const mealData: any = {
+        energyType: mealAnalysis["Energy type"] || "DYNAMISM",
+        foodName: mealAnalysis["Food name"],
+        impressions: mealAnalysis["Impressions"],
+      };
+
+      // meal情報をペイロードに追加
+      const nextJsonData = {
         ...nft.meta,
-        date: getFormattedDate(new Date()),
+        food_name: mealData.foodName,
+        food_image: `ipfs://${imageCid}`,
+        meal_date: getFormattedDate(new Date()),
+        impressions: mealData.impressions,
       };
 
       const currentData = {
-        petType: nft.meta.petType,
+        petType: nft.meta.pet_type,
         generation: nft.meta.generations,
       };
-      if (!currentData.generation) {
+      if (currentData.generation) {
         const currentPetInfo: PetData | undefined = PetDataList.find(
           (item) => item.petType === currentData.petType
         );
-        const analysisData: any = {
-          energyType: mealAnalysis["Energy type"] || "DYNAMISM",
-          foodName: mealAnalysis["Food name"],
-          impressions: mealAnalysis["Impressions"],
-        };
 
         const nextPetType: string | undefined =
           currentPetInfo?.nextGenerations.find(
-            (item) => item.energyType === analysisData.energyType
+            (item) => item.energyType === mealData.energyType
           )?.petType;
         if (nextPetType) {
-          // 成長先のペット情報でペイロードを作成
-          // ペット情報を更新する
+          // 成長先のペット情報でペイロード情報を更新
           const nextPetInfo: PetData | undefined = PetDataList.find(
             (item) => item.petType === nextPetType
           );
           const imageUrl = `ipfs://${nextPetInfo?.imageCid}`;
 
-          nextJsonData = {
-            ...nft.meta,
-            date: getFormattedDate(new Date()),
+          Object.assign(nextJsonData, {
             image: imageUrl,
             pet_type: nextPetType,
             generations: nextPetInfo?.generations,
-            food_name: analysisData.foodName,
-            impressions: analysisData.impressions,
-          };
+          });
         }
       }
       // JSONデータをアップロード
@@ -256,6 +279,10 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
             <div className="font-bold mb-2">Confirm Meal Details</div>
             <div>Detected Menu: {mealAnalysis.result["Food name"]}</div>
             <div>Total Estimated Calories: {mealAnalysis.result["Calory"]} kcal</div>
+         {/*
+            <div>Detected Menu: {mealAnalysis["Food name"]}</div>
+            <div>Total Estimated Calories: {mealAnalysis.Calory} kcal</div>
+          */}
             {selectedFile && (
               <img
                 src={URL.createObjectURL(selectedFile)}
@@ -265,6 +292,11 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
             )}
             <div className="mb-2">Energy: {mealAnalysis.result["Energy"]}</div>
             <div className="mb-2">Energy Type: {mealAnalysis.result["Energy type"]}</div>
+        {/*
+            <div className="mb-2">
+              Energy Type: {mealAnalysis["Energy type"]}
+            </div>
+         */}            
             <input
               type="text"
               className="mb-2 border rounded px-2 py-1 w-full"
@@ -278,7 +310,7 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
               disabled={uploading || !secret}
               className="mb-2"
             >
-              {uploading ? "パックエンドで処理中..." : "Update"}
+              {uploading ? "アップロード中..." : "Update"}
             </Button>
             {error && <div className="text-red-500 mb-2">{error}</div>}
           </div>
