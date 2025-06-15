@@ -1,0 +1,48 @@
+<form method="post" action="">
+  <div>
+    <input type="file" name="input_file">
+    <input type="submit" id="btn_submit" name="btn_submit" value="送信">
+  </div>
+  <div>
+    <textarea name="log" class="log" rows="20" cols="80" disabled></textarea>
+  </div>
+</form>
+
+<script>
+
+  console.log = ((logTextAreaArgument) => {
+    let logTextArea = logTextAreaArgument;
+    return text => logTextArea.value+=text+'\n';
+  })(document.getElementsByClassName('log')[0]);
+
+  window.addEventListener('DOMContentLoaded', () => {
+
+  const btn_submit = document.getElementById("btn_submit");
+  const fd = new FormData();
+
+  btn_submit.addEventListener('click', (e)=> {
+    console.log("========= Start ========");
+    e.preventDefault();
+
+    const api_url = 'https://wallaby-more-pony.ngrok-free.app/img2txt';
+    const input_file = document.querySelector('input[name=input_file]');
+
+    fd.append('file', input_file.files[0]);
+
+    fetch(api_url, {
+      method: 'POST',
+      body: fd
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log(data.result);
+      console.log("========= Done ========");
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+  });
+
+});
+
+</script>

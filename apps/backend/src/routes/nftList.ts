@@ -23,9 +23,9 @@ router.get("/:address", async (req, res) => {
       // URIからペイロードを取得
       const uri = xrpl.convertHexToString(URI);
       const cid = uri.replace("ipfs://", "");
-      // const url = await getUrl(cid, pinataJwt);
+      const url = await getUrl(cid, pinataJwt);
 
-      const url = "https://ipfs.io/ipfs/" + cid;
+      // const url = "https://ipfs.io/ipfs/" + cid;
 
       console.log("url")
       console.log(url)
@@ -85,9 +85,9 @@ router.post("/load", async (req, res) => {
       // URIからペイロードを取得
       const uri = xrpl.convertHexToString(URI);
       const cid = uri.replace("ipfs://", "");
-      // const url = await getUrl(cid, pinataJwt);
+      const url = await getUrl(cid, pinataJwt);
 
-      const url = "https://ipfs.io/ipfs/" + cid;
+      // const url = "https://ipfs.io/ipfs/" + cid;
 
       const response = await fetch(url);
       if (response.status !== 200) {

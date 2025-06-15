@@ -54,6 +54,10 @@ jupyter notebook/    # AI APIサーバーの処理用 jpynbファイルを格納
    - 注意事項：[Hugging Face](https://huggingface.co/) と [ngrok](https://ngrok.com/)のアカウントが必要になります。
 
 
+## デモサイト
+   - フロントエンド: [http://localhost:5173](http://localhost:5173)
+
+
 
 ## スクリプト
 
