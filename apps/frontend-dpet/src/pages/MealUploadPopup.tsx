@@ -3,6 +3,7 @@ import { Button } from "@repo/ui/button";
 import { Popup } from "@repo/ui/popup";
 import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
 import { type PetData, PetDataList } from "@repo/frontend-dpet/petData";
+import { analyzeImageWithAI } from "@repo/utils/analyzeImage";
 
 interface MealUploadPopupProps {
   open: boolean;
@@ -11,7 +12,7 @@ interface MealUploadPopupProps {
   account: string;
 }
 
-export const MealUploadPopup: React.FC<MealUploadPopupProps> = async ({
+export const MealUploadPopup: React.FC<MealUploadPopupProps> =  ({
   open,
   onClose,
   nft,
@@ -132,29 +133,27 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = async ({
 
   // Step 1: Upload & AI analysis
   const handleNext = async () => {
-    if (!selectedFile) {
-      setError("Please select a file.");
-      return;
-    }
-    setUploading(true);
-    setError(null);
-    try {
-      // Simulate AI analysis API call
-      // Replace with your actual API call
-      await new Promise((res) => setTimeout(res, 1200));
-      setMealAnalysis({
-        menu: "Ramen",
-        calories: 400,
-        energy: "1000g",
-        energyType: "Carbohydrate",
-      });
-      setStep(2);
-    } catch (err: any) {
-      setError("AI analysis failed.");
-    } finally {
-      setUploading(false);
-    }
-  };
+  if (!selectedFile) {
+    setError("Please select a file.");
+    return;
+  }
+  setUploading(true);
+  setError(null);
+  try {
+    const response = await analyzeImageWithAI(selectedFile);
+    console.log("AI response:", response);
+
+    if (!response.ok) throw new Error("AI analysis failed.");
+
+    const aiResult = await response.json();
+    setMealAnalysis(aiResult); // Use the result from backend
+    setStep(2);
+  } catch (err: any) {
+    setError(`AI analysis failed. ${err.message || "Unknown error"}`);
+  } finally {
+    setUploading(false);
+  }
+};
 
   // Step 2: Confirm & Update backend
   const handleUpdate = async () => {
