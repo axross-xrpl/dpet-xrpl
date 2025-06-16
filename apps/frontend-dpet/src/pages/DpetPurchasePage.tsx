@@ -9,7 +9,7 @@ export function DpetPurchasePage() {
   const account = xumm.state.account;
 
   const [error, setError] = useState<string | null>(null);
-  const [offerId, setOfferId] = useState<string | null>(null);
+  // const [offerId, setOfferId] = useState<string | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [name, setName] = useState('');
   const [secret, setSecret] = useState('');
@@ -107,12 +107,12 @@ export function DpetPurchasePage() {
   const handleMintNft = async (petName: string, petType: string, secret: string) => {
 
     setError(null);
-    setOfferId(null);
+    // setOfferId(null);
 
     try {
 
       // TODO: 選ばれたペットごとに内容を変更する
-      const image = "/src/assets/pets/dog001.jpg"; 
+      const image = "/assets/pets/dog001.jpg"; 
       const response = await fetch(image);
       if (!response.ok) {
         throw new Error(`Failed to fetch local image: ${response.statusText}`);
@@ -140,7 +140,7 @@ export function DpetPurchasePage() {
       // NFTミントを実行し、オファーIDを取得
       const offerId = await createNft(jsonCid);
       console.log(offerId);
-      setOfferId(offerId);
+      // setOfferId(offerId);
 
       // 売却オファーを受領
       await acceptSellOffer(offerId, secret);
@@ -184,7 +184,7 @@ export function DpetPurchasePage() {
               {/* Pet 1 */}
               <div className="flex flex-col items-center">
                 <img
-                  src="/src/assets/pets/bird001.jpg"
+                  src="/assets/pets/bird001.jpg"
                   alt="Pet type 1"
                   className="w-48 h-48 object-contain"
                 />
@@ -207,7 +207,7 @@ export function DpetPurchasePage() {
               {/* Pet 2 */}
               <div className="flex flex-col items-center">
                 <img
-                  src="/src/assets/pets/dog001.jpg"
+                  src="/assets/pets/dog001.jpg"
                   alt="Pet type 1"
                   className="w-48 h-48 object-contain"
                 />
@@ -229,7 +229,7 @@ export function DpetPurchasePage() {
               {/* Pet 3 */}
               <div className="flex flex-col items-center">
                 <img
-                  src="/src/assets/pets/monkey001.jpg"
+                  src="/assets/pets/monkey001.jpg"
                   alt="Pet type 1"
                   className="w-48 h-48 object-contain"
                 />

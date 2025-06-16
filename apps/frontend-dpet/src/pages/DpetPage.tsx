@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useXumm } from "@repo/frontend/contexts/XummContext";
 import NFTList, { type NFTItem } from "@repo/ui/nftlist";
 import { LoadingOverlay } from "@repo/ui/loadingOverlay";
 import { MemoriesPopup } from "./MemoriesPopup";
 import { MealUploadPopup } from "./MealUploadPopup";
-import { Button } from "@repo/ui/button";
+// import { Button } from "@repo/ui/button";
 
 
 export function DpetPage() {
@@ -25,76 +25,76 @@ export function DpetPage() {
 
   useEffect(() => {
     // TODO 画面リフレッシュ処理
-    async function buildNftItems() {
-      if (!petNftList) {
-        setNftItems([]);
-        return;
-      }
-      let pets: any[] = petNftList;
-      const items: NFTItem[] = pets.map((pet) => {
-        const meta = pet.payload;
-        console.log("Pet Metadata:", meta);
-        return {
-          //add pet types and gen
-          id: pet.NFTokenID,
-          name: meta.pet_name || pet.NFTokenID,
-          image: meta.image
-            ? meta.image.replace("ipfs://", "http://gateway.pinata.cloud/ipfs/")
-            : "",
-          detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
-          meta,
-          onMealTime: () => {
-            setSelectedMealNft({
-              id: pet.NFTokenID,
-              name: meta.pet_name || pet.NFTokenID,
-              image: meta.image
-                ? meta.image.replace(
-                  "ipfs://",
-                  "http://gateway.pinata.cloud/ipfs/"
-                )
-                : "",
-              detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
-              meta,
-            });
-            setMealPopupOpen(true);
-          },
-          onMemory: () =>
-            setSelectedMemoryNft({
-              id: pet.NFTokenID,
-              name: meta.pet_name || pet.NFTokenID,
-              image: meta.image
-                ? meta.image.replace(
-                  "ipfs://",
-                  "http://gateway.pinata.cloud/ipfs/"
-                )
-                : "",
-              detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
-              meta,
-            }),
-        };
-      });
-      setNftItems(items);
-      setMemoriesPopupOpen(true);
-      console.log("NFT Items:", items);
-    }
+    // async function buildNftItems() {
+    //   if (!petNftList) {
+    //     setNftItems([]);
+    //     return;
+    //   }
+    //   let pets: any[] = petNftList;
+    //   const items: NFTItem[] = pets.map((pet) => {
+    //     const meta = pet.payload;
+    //     console.log("Pet Metadata:", meta);
+    //     return {
+    //       //add pet types and gen
+    //       id: pet.NFTokenID,
+    //       name: meta.pet_name || pet.NFTokenID,
+    //       image: meta.image
+    //         ? meta.image.replace("ipfs://", "http://gateway.pinata.cloud/ipfs/")
+    //         : "",
+    //       detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
+    //       meta,
+    //       onMealTime: () => {
+    //         setSelectedMealNft({
+    //           id: pet.NFTokenID,
+    //           name: meta.pet_name || pet.NFTokenID,
+    //           image: meta.image
+    //             ? meta.image.replace(
+    //               "ipfs://",
+    //               "http://gateway.pinata.cloud/ipfs/"
+    //             )
+    //             : "",
+    //           detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
+    //           meta,
+    //         });
+    //         setMealPopupOpen(true);
+    //       },
+    //       onMemory: () =>
+    //         setSelectedMemoryNft({
+    //           id: pet.NFTokenID,
+    //           name: meta.pet_name || pet.NFTokenID,
+    //           image: meta.image
+    //             ? meta.image.replace(
+    //               "ipfs://",
+    //               "http://gateway.pinata.cloud/ipfs/"
+    //             )
+    //             : "",
+    //           detailsUrl: `https://dev.xrplexplorer.com/en/nft/${pet.NFTokenID}`,
+    //           meta,
+    //         }),
+    //     };
+    //   });
+    //   setNftItems(items);
+    //   setMemoriesPopupOpen(true);
+    //   console.log("NFT Items:", items);
+    // }
 
-    async function fetchModifyListData() {
-      if (!account) return;
-      setLoadingNfts(true);
-      try {
-        const res = await fetch(`${API_URL}/api/xrpl/modifylist/${account}`);
-        if (res.ok) {
-          const data = await res.json();
-          setModifyListData(data);
-        } else {
-          setModifyListData(null);
-        }
-      } catch (err) {
-        setModifyListData(null);
-      } finally {
-        setLoadingNfts(false);
-      }
-    }
+    // async function fetchModifyListData() {
+    //   if (!account) return;
+    //   setLoadingNfts(true);
+    //   try {
+    //     const res = await fetch(`${API_URL}/api/xrpl/modifylist/${account}`);
+    //     if (res.ok) {
+    //       const data = await res.json();
+    //       setModifyListData(data);
+    //     } else {
+    //       setModifyListData(null);
+    //     }
+    //   } catch (err) {
+    //     setModifyListData(null);
+    //   } finally {
+    //     setLoadingNfts(false);
+    //   }
+    // }
 
     // fetchModifyListData();
     // fetchAndSetNftList();
@@ -103,7 +103,7 @@ export function DpetPage() {
 
   }, [petNftList, nftList, account]);
 
-    async function buildNftItems() {
+    const buildNftItems = useCallback(() => {
 
       console.log("buildNftItems");
 
@@ -157,9 +157,9 @@ export function DpetPage() {
       setNftItems(items);
       setMemoriesPopupOpen(true);
       console.log("NFT Items:", items);
-    }
+    }, [petNftList]);
 
-    async function fetchModifyListData() {
+    const fetchModifyListData = useCallback(async () => {
       if (!account) return;
       setLoadingNfts(true);
       try {
@@ -175,12 +175,12 @@ export function DpetPage() {
       } finally {
         setLoadingNfts(false);
       }
-    }
+    }, [account]);
 
   const API_URL = import.meta.env.VITE_BACKEND_URL!;
 
   // NFTリストを読み込む
-  const loadNftList = async (list: object[]) => {
+  const loadNftList = useCallback(async (list: object[]) => {
     const response = await fetch(`${API_URL}/api/xrpl/nfts/load`, {
       method: "POST",
       headers: {
@@ -194,9 +194,9 @@ export function DpetPage() {
     }
     const responseJson = await response.json();
     return responseJson;
-  };
+  }, []);
 
-  async function fetchAndSetNftList() {
+  const fetchAndSetNftList = useCallback(async () => {
     setLoadingNfts(true);
     if (nftList && "pets" in nftList && Array.isArray(nftList.pets)) {
       try {
@@ -210,7 +210,50 @@ export function DpetPage() {
     } else {
       setError("No pet list available.");
     }
-  }
+  }, [nftList, loadNftList]);
+
+  useEffect(() => {
+    const loadAllData = async () => {
+      if (account && API_URL) { // Only proceed if account and API_URL are available
+        setLoadingNfts(true);
+        setError(null);
+        try {
+          console.log("useEffect: Starting data load sequence...");
+          await fetchModifyListData();
+          await fetchAndSetNftList(); // This will set petNftList
+          // buildNftItems will be called by the other useEffect when petNftList changes
+          console.log("useEffect: Data load sequence completed (modifyList and petNftList potentially set).");
+        } catch (err) {
+          console.error("useEffect: Error during data load sequence:", err);
+          setError(err instanceof Error ? err.message : "Failed to load page data.");
+          setNftItems([]); // Clear items on error
+          setPetNftList(null);
+          setModifyListData(null);
+        } finally {
+          setLoadingNfts(false);
+        }
+      } else {
+        // Clear data if no account or API_URL
+        setNftItems([]);
+        setPetNftList(null);
+        setModifyListData(null);
+        setError(account ? "Backend URL not configured." : null);
+        setLoadingNfts(false);
+      }
+    };
+
+    loadAllData();
+  }, [account, nftList, fetchModifyListData, fetchAndSetNftList]); // Dependencies for initial load
+
+  // useEffect to build items when petNftList (from backend) changes
+  useEffect(() => {
+    if (petNftList !== null) { // Only build if petNftList has been set (even if empty array)
+        console.log("useEffect: petNftList changed, calling buildNftItems.");
+        buildNftItems();
+    } else if (!loadingNfts && account) { // If not loading and logged in, but petNftList is null (e.g. error or no pets)
+        setNftItems([]); // Ensure nftItems is cleared
+    }
+  }, [petNftList, buildNftItems, loadingNfts, account]);
 
   const handleMealPopupClose = async () => {
     setSelectedMealNft(null);
@@ -220,11 +263,11 @@ export function DpetPage() {
   };
 
   
-  const handleReload = async () => {
-    await fetchModifyListData();
-    await fetchAndSetNftList();
-    await buildNftItems();
-  };
+  // const handleReload = async () => {
+  //   await fetchModifyListData();
+  //   await fetchAndSetNftList();
+  //   await buildNftItems();
+  // };
   
   // console.log("nftitems:", nftItems);
 
@@ -234,14 +277,14 @@ export function DpetPage() {
 
       <div>
             {/* リロードボタン(Debug用) */}
-            <Button
+            {/* <Button
               className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded font-semibold"
               onClick={() => {
                 handleReload();
               }}
             >
               Reload
-            </Button>
+            </Button> */}
         </div>
 
 
