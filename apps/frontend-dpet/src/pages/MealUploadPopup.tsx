@@ -1,9 +1,9 @@
-import * as xrpl from "xrpl";
+// import * as xrpl from "xrpl";
 import React, { useState, useEffect } from "react";
 import { Button } from "@repo/ui/button";
 import { Popup } from "@repo/ui/popup";
 import { useXumm } from "@repo/frontend/contexts/XummContext";
-import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
+// import { createNFTokenModifyPayload } from "@repo/utils/nftokenModify";
 import { getFormattedDate } from "@repo/utils/getFormattedDate";
 import { type PetData, PetDataList } from "@repo/frontend-dpet/petData";
 import { analyzeImageWithAI } from "@repo/utils/analyzeImage";
@@ -21,7 +21,7 @@ export const MealUploadPopup: React.FC<MealUploadPopupProps> = ({
   nft,
   account,
 }) => {
-  const { xumm, fetchNftList } = useXumm();
+  const { fetchNftList } = useXumm();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);

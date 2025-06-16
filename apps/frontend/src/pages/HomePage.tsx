@@ -77,14 +77,14 @@ export function HomePage() {
   // アバター画像マッピング
   const avatarImageMap: Record<'A' | 'B', Record<BodyType, string>> = {
     A: {
-      thin: '/src/assets/avatars/avatar-a001.jpg',
-      average: '/src/assets/avatars/avatar-a002.jpg',
-      fat: '/src/assets/avatars/avatar-a003.jpg',
+      thin: '/assets/avatars/avatar-a001.jpg',
+      average: '/assets/avatars/avatar-a002.jpg',
+      fat: '/assets/avatars/avatar-a003.jpg',
     },
     B: {
-      thin: '/src/assets/avatars/avatar-e001.jpg',
-      average: '/src/assets/avatars/avatar-e002.jpg',
-      fat: '/src/assets/avatars/avatar-e003.jpg',
+      thin: '/assets/avatars/avatar-e001.jpg',
+      average: '/assets/avatars/avatar-e002.jpg',
+      fat: '/assets/avatars/avatar-e003.jpg',
     },
   };
 
@@ -767,7 +767,7 @@ export function HomePage() {
                   >
                     NFT details
                     <img
-                      src="/src/assets/icons/125_arr_hoso.svg"
+                      src="/assets/icons/125_arr_hoso.svg"
                       alt="open in new tab"
                       className="w-4 h-4"
                     />
@@ -867,7 +867,7 @@ export function HomePage() {
                     >
                       NFT details
                       <img
-                        src="/src/assets/icons/125_arr_hoso.svg"
+                        src="/assets/icons/125_arr_hoso.svg"
                         alt="open in new tab"
                         className="w-4 h-4"
                       />
@@ -926,7 +926,7 @@ export function HomePage() {
                     checked={avatarType === 'A'}
                     onChange={() => setAvatarType('A')}
                   />
-                  <img src="/src/assets/avatars/avatar-a002.jpg" alt="Type A" className="w-24 h-24" />
+                  <img src="/assets/avatars/avatar-a002.jpg" alt="Type A" className="w-24 h-24" />
                   <span>Type A</span>
                 </label>
 
@@ -939,7 +939,7 @@ export function HomePage() {
                     checked={avatarType === 'B'}
                     onChange={() => setAvatarType('B')}
                   />
-                  <img src="/src/assets/avatars/avatar-e002.jpg" alt="Type B" className="w-24 h-24" />
+                  <img src="/assets/avatars/avatar-e002.jpg" alt="Type B" className="w-24 h-24" />
                   <span>Type B</span>
                 </label>
               </div>
